@@ -281,12 +281,7 @@ local function onStateBroadcast(proto, opcode, buffer)
     end
     local lp = g_game.getLocalPlayer()
     if lp and cid == lp:getId() then
-        local prev = iAmSelling
         iAmSelling = (isOpen == 1)
-        if prev ~= iAmSelling then
-            print(('[playershop] state changed: iAmSelling %s -> %s'):format(
-                tostring(prev), tostring(iAmSelling)))
-        end
     end
 end
 
@@ -336,14 +331,6 @@ end
 -- Init / Terminate
 -- ----------------------------------------------------------------------------
 function init()
-    print('[playershop] init() entered')
-    print('[playershop] type(modules)=' .. type(modules))
-    print('[playershop] modules.game_interface=' .. tostring(modules and modules.game_interface))
-    local gi = modules and modules.game_interface
-    if gi then
-        print('[playershop] gi.addMenuHook=' .. tostring(gi.addMenuHook))
-    end
-
     -- Schedule menu hooks AFTER all modules definitely loaded.
     scheduleEvent(function()
         local gi2 = modules and modules.game_interface
@@ -357,8 +344,6 @@ function init()
             'Open Shop',
             function(menuPos, look, use, creature)
                 local lp = g_game.getLocalPlayer()
-                print(('[playershop] Open Shop click: iAmSelling=%s'):format(
-                    tostring(iAmSelling)))
                 if iAmSelling and lp then
                     -- Ja tem loja ativa: pede SHOP_DATA da propria loja
                     -- pra abrir em modo owner-view (estoque atualizado).
