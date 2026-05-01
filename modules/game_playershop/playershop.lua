@@ -253,7 +253,7 @@ local function onStateBroadcast(proto, opcode, buffer)
         -- polui o chat. Cor dourada pra destacar de outros titles.
         if creature and creature.setTitle then
             pcall(function()
-                creature:setTitle(text or '', 'verdana-9px', '#ffffff')
+                creature:setTitle(text or '', 'verdana-11px-antialised', '#ffffff')
             end)
         end
     else
@@ -401,7 +401,7 @@ function init()
                 if entry and creature.setTitle then
                     pcall(function()
                         creature:setTitle(entry.text or '',
-                            'verdana-9px', '#ffffff')
+                            'verdana-11px-antialised', '#ffffff')
                     end)
                 end
             end
