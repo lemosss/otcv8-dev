@@ -1,15 +1,14 @@
 PickerCell < UIWidget
   size: 56 64
-  background-color: #2c2c2c
+  image-source: /images/ui/item
+  image-border: 1
   border-color: #4a4a4a
   border-width: 1
   border-radius: 3
   focusable: true
   $hover:
-    background-color: #3a3a3a
     border-color: #FFD700
   $on:
-    background-color: #565656
     border-color: #FFD700
 
   Item
@@ -151,7 +150,8 @@ ShopBubble < UIWidget
 
 ShopSlot < UIWidget
   height: 36
-  background-color: #2c2c2c
+  image-source: /images/ui/item
+  image-border: 1
   border-width: 1
   border-color: #444444
   border-radius: 4
@@ -273,7 +273,8 @@ CreateShopWindow < MainWindow
 
 ShopBuyRow < UIWidget
   height: 44
-  background-color: #2c2c2c
+  image-source: /images/ui/item
+  image-border: 1
   border-color: #444444
   border-width: 1
   border-radius: 3
