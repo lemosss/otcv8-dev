@@ -596,6 +596,15 @@ end
 function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, useThing, creatureThing, attackCreature, marking)
   local keyboardModifiers = g_keyboard.getModifiers()
 
+  -- PlayerShop seller lock: while OWN shop is open, swallow ALL right-clicks.
+  -- The server already rejects movement, but right-click on a creature in
+  -- classic-control mode triggers an attack which makes the seller try to
+  -- pursue ("step and return" visual). Easier to drop the click here.
+  if mouseButton == MouseRightButton and modules.game_playershop
+      and modules.game_playershop.iAmSelling then
+    return true
+  end
+
   -- PlayerShop quick-open: left-click numa creature vendendo abre a loja
   -- direto, sem precisar do menu "Open Shop". Soh dispara sem modifier
   -- (Shift/Ctrl/Alt continuam fazendo look/use/attack como sempre).
