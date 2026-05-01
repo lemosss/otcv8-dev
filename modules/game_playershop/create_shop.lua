@@ -315,10 +315,6 @@ end
 -- non-stackable items, count is always 1 (each entry is one instance).
 function promptCountAndAssign(slotIndex, entry)
     if not slotIndex or not entry then return end
-    print(('[playershop] promptCountAndAssign slot=%s entry.id=%s count=%s stack=%s')
-        :format(tostring(slotIndex), tostring(entry.id),
-                tostring(entry.count), tostring(entry.stackable)))
-    print(debug.traceback('  caller stack', 2))
     local available = entry.count or 1
     -- Non-stackable: cada entry eh 1 instancia unica, sem prompt.
     if not entry.stackable or available <= 1 then
@@ -326,6 +322,12 @@ function promptCountAndAssign(slotIndex, entry)
         destroyPickerWindow()
         return
     end
+
+    -- Destroy the picker BEFORE creating the qty window so a stale OK click
+    -- queued by OTC (e.g. when the user double-clicks the cell, OTC fires
+    -- both cell.onDoubleClick AND the picker's default-button onClick on
+    -- the same gesture) can't reach an already-gone widget.
+    destroyPickerWindow()
 
     local qtyWindow = g_ui.createWidget('QtyWindow', rootWidget)
     qtyWindow:setText(('Quantos? (max %d)'):format(available))
