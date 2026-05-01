@@ -72,9 +72,8 @@ PickerWindow < MainWindow
     margin-top: 10
     margin-bottom: 6
     margin-right: 4
-    image-source: /images/ui/panel_bottom
-    image-border: 7
-    image-border-top: 7
+    image-source: /images/ui/panel_flat
+    image-border: 1
     padding: 4
     layout:
       type: grid
@@ -237,9 +236,8 @@ CreateShopWindow < MainWindow
     margin-top: 10
     margin-bottom: 6
     margin-right: 4
-    image-source: /images/ui/panel_bottom
-    image-border: 7
-    image-border-top: 7
+    image-source: /images/ui/panel_flat
+    image-border: 1
     padding: 4
     layout:
       type: verticalBox
@@ -377,9 +375,8 @@ ShopViewWindow < MainWindow
     margin-top: 10
     margin-bottom: 6
     margin-right: 4
-    image-source: /images/ui/panel_bottom
-    image-border: 7
-    image-border-top: 7
+    image-source: /images/ui/panel_flat
+    image-border: 1
     padding: 4
     layout:
       type: verticalBox
