@@ -181,12 +181,23 @@ function openItemPicker(slotIndex)
 end
 
 local function highlightCell(cell)
-    if pickerSelected and pickerSelected ~= cell then
-        pickerSelected:setOn(false)
+    -- Hard-reset every cell's border via direct widget API (not via the $on
+    -- style state, which proved sticky in this OTC build). Then apply white
+    -- 2px border to the chosen cell only. Brute-force iteration is cheap
+    -- (max ~50 cells) and guarantees only ONE cell shows the highlight.
+    if pickerWindow then
+        local panel = pickerWindow:recursiveGetChildById('gridPanel')
+        if panel then
+            for _, sibling in ipairs(panel:getChildren()) do
+                sibling:setBorderWidth(0)
+            end
+        end
     end
     pickerSelected = cell
-    if cell then cell:setOn(true) end
-    -- Toggle the OK button enabled-state to match selection.
+    if cell then
+        cell:setBorderColor('#ffffff')
+        cell:setBorderWidth(2)
+    end
     if pickerWindow then
         local okBtn = pickerWindow:recursiveGetChildById('pickOkBtn')
         if okBtn then okBtn:setEnabled(cell ~= nil) end

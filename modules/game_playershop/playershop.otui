@@ -1,22 +1,16 @@
 PickerCell < UIWidget
   size: 56 64
-  image-source: /images/ui/item
-  image-border: 1
-  border-color: #4a4a4a
-  border-width: 1
-  border-radius: 3
-  focusable: true
-  $hover:
-    border-color: #FFD700
+  focusable: false
   $on:
-    border-color: #FFD700
+    border-color: #ffffff
+    border-width: 2
 
   Item
     id: cellItem
     anchors.top: parent.top
     anchors.horizontalCenter: parent.horizontalCenter
     margin-top: 3
-    size: 32 32
+    size: 34 34
     virtual: true
     show-count: true
     phantom: true
@@ -273,12 +267,9 @@ CreateShopWindow < MainWindow
 
 ShopBuyCell < UIWidget
   size: 36 36
-  focusable: true
-  $hover:
-    border-color: #FFD700
-    border-width: 1
+  focusable: false
   $on:
-    border-color: #FFD700
+    border-color: #ffffff
     border-width: 2
 
   Item
@@ -464,8 +455,7 @@ ShopViewWindow < MainWindow
     anchors.right: parent.right
     margin-top: 8
     margin-bottom: 8
-    width: 12
-    step: 36
+    step: 38
     pixels-scroll: true
 
   ScrollablePanel

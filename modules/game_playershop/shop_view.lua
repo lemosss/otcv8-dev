@@ -78,12 +78,20 @@ local function refreshSelectionPanel()
 end
 
 local function selectCell(cell)
-    if selectedCell and selectedCell ~= cell then
-        selectedCell:setOn(false)
+    -- Hard-reset every cell border via direct widget API (the $on style
+    -- proved sticky in this OTC build), then paint the chosen cell only.
+    if viewWindow then
+        local container = viewWindow:recursiveGetChildById('viewItems')
+        if container then
+            for _, sibling in ipairs(container:getChildren()) do
+                sibling:setBorderWidth(0)
+            end
+        end
     end
     selectedCell = cell
     if cell then
-        cell:setOn(true)
+        cell:setBorderColor('#ffffff')
+        cell:setBorderWidth(2)
         selectedEntry = cell.entry
     else
         selectedEntry = nil
