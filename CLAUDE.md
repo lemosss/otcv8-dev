@@ -186,3 +186,51 @@ Outras features Lua-only do PlayerShop que valem deixar registradas:
 - **Walking lock** em `modules/game_walking/walking.lua`: `walk()` e `turn()` early-return se `modules.game_playershop.iAmSelling`. Junto com o walking lock do servidor, isso garante que o vendedor fique ancorado.
 - **Right-click no chão durante venda**: NÃO modificar `processMouseAction` em `gameinterface.lua` para forçar menu -- isso quebra o classic control (que usa right-click para look/use). O lock só precisa estar em `walking.lua` mesmo; o server também rejeita movimento via `setMovementBlocked(true)` no cylinder do char vendedor.
 - **Right-click no próprio char abre owner-view** (com a loja em modo gerenciar) via menu hook em `playershop.lua`. Esse caminho usa o `gi2.addMenuHook` que é executado pelo `createThingMenu` -- não precisa interceptação manual.
+
+## PlayerShop — buyer-view layout v2 + gold counter + rune drag
+
+Sessão de retrabalho da janela de comprador (Day-9 do CLAUDE.md do server `Realera TFS 1.5/`). Resumo do que vive nesse repo:
+
+### `modules/game_playershop/playershop.otui` — `ShopViewWindow` reescrito
+Layout antigo era uma lista vertical de `ShopBuyRow` (slot + nome + preço + qty + Buy por linha). Novo layout = grid de sprites + painel inferior único:
+
+- **Top**: search bar (`searchEdit` + `searchClearBtn`) ancorada só na METADE direita da janela (`anchors.left: parent.horizontalCenter`), com `searchLbl` flutuando à esquerda do edit.
+- **Middle**: `viewItems` (ScrollablePanel com `layout: type=grid, cell-size: 38 38`) populado por `ShopBuyCell` (UIWidget de 36x36, `Item` interno default — slot bg natural). Hover/selected = borda dourada via `$hover`/`$on`.
+- **Bottom info panel** (UIWidget 110px alto, dividido em 3 colunas): `selName` + `priceLbl` + `amountScroll` (HorizontalScrollBar) + `amountLbl` + `weightLbl` à esquerda; `previewSlot` + `buyBtn` no meio; `descPanel` (textura `panel_flat`, 90px alto) à direita.
+- **Footer**: `goldBox` (texturizado `panel_flat`, 150x20, contém `goldIcon` UIItem com `item-id: 3031` = client.dat gold coin) à esquerda + `closeBtn` à direita.
+
+### `modules/game_playershop/shop_view.lua` — refatorado pro novo layout
+- Cells em grid (`buildBuyerCell`) substituindo `buildItemRow`.
+- Estado local: `viewEntries`, `selectedCell`, `selectedEntry`, `searchText`, `viewBalance`.
+- `selectCell()` toggla `setOn` na cell selecionada.
+- `applySearchFilter()` percorre cells e usa `setVisible(false)` por nome (case-insensitive substring). Filtro client-side puro -- server manda lista completa uma vez.
+- `amountScroll.onValueChange` atualiza `amountLbl` E `previewItem:setItemCount(value)` (badge no preview reflete a qtd escolhida).
+- Buy btn lê `selectedEntry.slot` + `amountScroll:getValue()` e dispara `OPCODE_SHOP_BUY`.
+- Double-click numa cell = compra direta na qtd atual.
+
+### Wire format SHOP_DATA — adicionados balance + weight
+Server (`Realera TFS 1.5/data/scripts/playershop/02_core.lua`, função `PlayerShop_SendShopDataTo`) acrescenta:
+1. **Logo após `isOwner u8`**: `u32 buyerBalance` -- soma de bank + cash (gold + plat×100 + crystal×10000), com walk recursivo do open backpack do comprador.
+2. **Em cada item entry, antes de `name`**: `u32 weight` em unidades de 1/100 oz (= `ItemType:getWeight()`).
+
+Client `shop_view_handle` parseia os dois e popula `viewBalance` (módulo-scope) + `entry.weight` por item. `refreshGoldLabel` mostra `viewBalance`; `refreshSelectionPanel` formata `weight / 100` com 2 casas.
+
+### Rune drag stack (cont. do day-8)
+A correção do drag de runa (que existia só no `otclientv80` prebuilt e não tinha sido portada pro source) finalmente caiu aqui:
+- `modules/gamelib/ui/uiitem.lua` + `modules/game_interface/widgets/uigamemap.lua` -- routam item com id no range `3147-3203` (faixa de runa em Tibia.dat 8.0) via `moveStackableItem` em vez do path padrão.
+- `modules/game_interface/gameinterface.lua` -- expõe `getEffectiveCount(item)` que retorna `getCountOrSubType()` para runas (a "contagem visível" no slot) e `getCount()` para o resto.
+- `moveStackableItem.commit()` lê `itembox:getItemCountOrSubType()` em vez de `getItemCount()`. UIItem.getItemCount delega pra Item.getCount que retorna 1 pra dat-flagged-charge items mesmo após `setItemCount(N)` -- o byte cru `m_countOrSubType` é o que queremos.
+
+### Bug do "verdana-11px" inexistente + comments OTUI
+Dois typos que se compõem para "buyer não abre":
+1. `playershop.lua` setando `'verdana-11px'` (sem sufixo) -- a font não existe; só `verdana-11px-antialised` / `-monochrome` / `-rounded`.
+2. `playershop.otui` com linhas `-- comment` (Lua-style) que o OTML parser rejeita como "not a valid style declaration", quebrando todo o ShopViewWindow.
+
+Lição: erro `failed to load UI from 'X.otui': '' is not a defined style` é sintoma de comment-line ou property-name typo. Não é bug Lua.
+
+### Cleanup
+- `modules/client/client.otmod` -- removido `client_mobile` que ficou pendurado de cleanups anteriores e gerava `Unable to find module 'client_mobile' required by 'client'` no boot.
+- `modules/game_playershop/playershop.lua` -- `onGameEnd` agora derruba TODAS as janelas (createWindow / pickerWindow / viewWindow / qty prompt) via `closeCreateShop()` + `shop_view_close()`, evitando UI orfã atrás do login screen no Ctrl+Q.
+
+### Open thread
+- **CreateShopWindow** (lado vendedor) ainda usa o layout antigo de slot-list. A próxima sessão é redesenhar pra bater com a screenshot do Lemos's Shop: description-focused com Idle Shop / Edit Description / History.

@@ -253,7 +253,7 @@ local function onStateBroadcast(proto, opcode, buffer)
         -- polui o chat. Cor dourada pra destacar de outros titles.
         if creature and creature.setTitle then
             pcall(function()
-                creature:setTitle(text or '', 'verdana-11px', '#ffffff')
+                creature:setTitle(text or '', 'verdana-11px-antialised', '#ffffff')
             end)
         end
     else
@@ -499,7 +499,13 @@ function onGameEnd()
     lastSavedText = nil
     lastSavedSlots = nil
     inventoryList = {}
-    if createWindow then createWindow:destroy(); createWindow = nil end
+    -- Tear down ANY shop window: the create-shop, the buyer view, the
+    -- item picker, the qty prompt. Otherwise on Ctrl+Q the windows linger
+    -- behind the login screen. closeCreateShop() handles createWindow +
+    -- pickerWindow (those are local in create_shop.lua); shop_view_close()
+    -- handles viewWindow.
+    pcall(function() if closeCreateShop then closeCreateShop() end end)
+    pcall(function() if shop_view_close then shop_view_close() end end)
 end
 
 -- Re-export so create_shop.lua / shop_view.lua can use them.

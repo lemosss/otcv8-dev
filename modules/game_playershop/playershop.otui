@@ -271,117 +271,220 @@ CreateShopWindow < MainWindow
     width: 90
     text: Cancelar
 
-ShopBuyRow < UIWidget
-  height: 44
-  image-source: /images/ui/item
-  image-border: 1
-  border-color: #444444
-  border-width: 1
-  border-radius: 3
-  margin-bottom: 4
+ShopBuyCell < UIWidget
+  size: 36 36
+  focusable: true
+  $hover:
+    border-color: #FFD700
+    border-width: 1
+  $on:
+    border-color: #FFD700
+    border-width: 2
 
   Item
-    id: itemSlot
-    anchors.left: parent.left
-    anchors.verticalCenter: parent.verticalCenter
-    margin-left: 6
-    size: 36 36
+    id: cellItem
+    anchors.centerIn: parent
+    size: 34 34
     virtual: true
     show-count: true
     phantom: true
 
-  Label
-    id: itemName
-    anchors.left: itemSlot.right
-    anchors.top: parent.top
-    margin-left: 8
-    margin-top: 6
-    color: #ffffff
-    font: verdana-11px-monochrome
-    text-align: left
-
-  Label
-    id: itemPrice
-    anchors.left: itemSlot.right
-    anchors.bottom: parent.bottom
-    margin-left: 8
-    margin-bottom: 6
-    color: #FFD700
-    font: verdana-11px-rounded
-    text-align: left
-
-  Button
-    id: buyBtn
-    anchors.right: parent.right
-    anchors.verticalCenter: parent.verticalCenter
-    margin-right: 6
-    width: 70
-    text: Comprar
-
-  TextEdit
-    id: qtyField
-    anchors.right: buyBtn.left
-    anchors.verticalCenter: parent.verticalCenter
-    margin-right: 6
-    width: 50
-    text: 1
-
 ShopViewWindow < MainWindow
   id: shopViewWindow
-  size: 460 540
+  size: 460 470
   text: Loja
   visible: false
 
   Label
     id: sellerLine
-    anchors.left: parent.left
-    anchors.right: parent.right
+    visible: false
+    height: 0
+
+  TextEdit
+    id: searchEdit
+    anchors.left: parent.horizontalCenter
+    anchors.right: searchClearBtn.left
     anchors.top: parent.top
-    margin-top: 4
-    color: #FFD700
-    font: verdana-11px-rounded
-    text-align: left
-    text-auto-resize: true
-    text-wrap: true
-    text: Vendedor: ?
+    margin-top: 2
+    margin-right: 4
+    placeholder: Type to search
 
   Label
-    id: sellerText
+    id: searchLbl
+    anchors.right: searchEdit.left
+    anchors.verticalCenter: searchEdit.verticalCenter
+    margin-right: 6
+    text: Search:
+    color: #dddddd
+
+  Button
+    id: searchClearBtn
+    anchors.right: parent.right
+    anchors.top: parent.top
+    margin-top: 2
+    size: 22 22
+    text: x
+    color: #ff6666
+    font: verdana-11px-rounded
+
+  Button
+    id: closeBtn
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    width: 80
+    text: Close
+
+  UIWidget
+    id: goldBox
+    anchors.left: parent.left
+    anchors.verticalCenter: closeBtn.verticalCenter
+    size: 150 20
+    image-source: /images/ui/panel_flat
+    image-border: 1
+
+    UIItem
+      id: goldIcon
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      margin-right: 2
+      size: 32 32
+      virtual: true
+      show-count: false
+      phantom: true
+      padding: 0
+
+    Label
+      id: goldLbl
+      anchors.right: goldIcon.left
+      anchors.verticalCenter: parent.verticalCenter
+      margin-right: 0
+      text: 0
+      color: #FFD700
+      font: verdana-11px-rounded
+      text-align: right
+      text-auto-resize: true
+
+  HorizontalSeparator
+    id: footerSep
     anchors.left: parent.left
     anchors.right: parent.right
-    anchors.top: sellerLine.bottom
-    margin-top: 4
-    color: #dddddd
-    font: verdana-11px-monochrome
-    text-wrap: true
-    text-auto-resize: true
+    anchors.bottom: closeBtn.top
+    margin-bottom: 6
+
+  UIWidget
+    id: infoPanel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: footerSep.top
+    margin-bottom: 6
+    height: 110
+
+    Label
+      id: selName
+      anchors.left: parent.left
+      anchors.top: parent.top
+      text: None selected
+      color: #ffffff
+      font: verdana-11px-monochrome
+
+    Label
+      id: priceLbl
+      anchors.left: parent.left
+      anchors.top: selName.bottom
+      margin-top: 4
+      text: Price (un): -
+      color: #FFD700
+      font: verdana-11px-monochrome
+
+    HorizontalScrollBar
+      id: amountScroll
+      anchors.left: parent.left
+      anchors.top: priceLbl.bottom
+      margin-top: 6
+      width: 160
+
+    Label
+      id: amountLbl
+      anchors.left: parent.left
+      anchors.top: amountScroll.bottom
+      margin-top: 4
+      text: Amount: 1x
+      color: #dddddd
+      font: verdana-11px-monochrome
+
+    UIWidget
+      id: previewSlot
+      anchors.left: amountScroll.right
+      anchors.top: parent.top
+      margin-left: 16
+      margin-top: 8
+      size: 48 48
+
+      Item
+        id: previewItem
+        anchors.centerIn: parent
+        size: 44 44
+        virtual: true
+        show-count: true
+        phantom: true
+
+    Button
+      id: buyBtn
+      anchors.horizontalCenter: previewSlot.horizontalCenter
+      anchors.top: previewSlot.bottom
+      margin-top: 6
+      width: 60
+      text: buy
+      enabled: false
+
+    UIWidget
+      id: descPanel
+      anchors.left: previewSlot.right
+      anchors.right: parent.right
+      anchors.top: parent.top
+      margin-left: 12
+      height: 90
+      image-source: /images/ui/panel_flat
+      image-border: 1
+
+      Label
+        id: descText
+        anchors.fill: parent
+        margin: 6
+        text: -
+        color: #ffffff
+        font: verdana-11px-monochrome
+        text-wrap: true
+        text-align: topLeft
 
   VerticalScrollBar
     id: viewScrollBar
-    anchors.top: sellerText.bottom
-    anchors.bottom: closeBtn.top
+    anchors.top: searchLbl.bottom
+    anchors.bottom: infoPanel.top
     anchors.right: parent.right
-    margin-top: 10
-    margin-bottom: 6
+    margin-top: 8
+    margin-bottom: 8
     width: 12
-    step: 48
+    step: 36
     pixels-scroll: true
 
   ScrollablePanel
     id: viewItems
     anchors.left: parent.left
     anchors.right: viewScrollBar.left
-    anchors.top: sellerText.bottom
-    anchors.bottom: closeBtn.top
-    margin-top: 10
-    margin-bottom: 6
+    anchors.top: searchLbl.bottom
+    anchors.bottom: infoPanel.top
+    margin-top: 8
+    margin-bottom: 8
     margin-right: 4
     image-source: /images/ui/panel_flat
     image-border: 1
     padding: 4
     layout:
-      type: verticalBox
-      spacing: 0
+      type: grid
+      cell-size: 38 38
+      cell-spacing: 3
+      flow: true
     vertical-scrollbar: viewScrollBar
 
   Label
@@ -390,10 +493,3 @@ ShopViewWindow < MainWindow
     text: (esta loja nao tem itens)
     color: #888888
     visible: false
-
-  Button
-    id: closeBtn
-    anchors.right: parent.right
-    anchors.bottom: parent.bottom
-    width: 80
-    text: Fechar
