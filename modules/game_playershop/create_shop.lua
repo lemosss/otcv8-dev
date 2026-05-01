@@ -358,7 +358,8 @@ function assignItemDirect(index, entry, count)
     -- ja foi alocada. Pra stackables, uid eh irrelevante.
     s.entryUid = entry.uid or 0
     s.stackable = entry.stackable and true or false
-    s.entryId  = entry.id
+    s.entryId  = entry.id            -- clientId (display)
+    s.serverId = entry.serverId or 0 -- echoed back to server on OPEN
     s.count    = count
     s.charges  = entry.charges or 0
     s.widget.itemSlot:setItemId(entry.id)
@@ -372,6 +373,7 @@ function assignItemToSlot(index, entry)
     if not s or not s.widget then return end
     s.entryUid = entry.uid
     s.entryId  = entry.id
+    s.serverId = entry.serverId or 0
     s.count    = entry.count
     s.charges  = entry.charges
     s.widget.itemSlot:setItemId(entry.id)
@@ -464,7 +466,9 @@ function commitCreateShop()
     for _, f in ipairs(filled) do
         local s = f.e
         payload = payload .. modules.game_playershop.packU32(s.entryUid or 0)
-        payload = payload .. modules.game_playershop.packU16(s.entryId or 0)
+        -- Send serverId (NOT clientId). Server's findItemInDepot does
+        -- it:getId() == itemId where it:getId() returns the OTB server id.
+        payload = payload .. modules.game_playershop.packU16(s.serverId or 0)
         payload = payload .. modules.game_playershop.packU16(s.count or 1)
         payload = payload .. modules.game_playershop.packU32(s.price or 0)
     end
@@ -478,8 +482,9 @@ function commitCreateShop()
     lastSavedSlots = {}
     for _, f in ipairs(filled) do
         lastSavedSlots[f.idx] = {
-            uid = f.e.entryUid, id = f.e.entryId, count = f.e.count,
-            charges = f.e.charges, name = '', price = f.e.price,
+            uid = f.e.entryUid, id = f.e.entryId, serverId = f.e.serverId,
+            count = f.e.count, charges = f.e.charges,
+            name = '', price = f.e.price,
         }
     end
     closeCreateShop()
@@ -493,15 +498,20 @@ function create_shop_inventory(buffer)
     local n; n, pos = modules.game_playershop.readPosU16(buffer, pos)
     inventoryList = {}
     for i = 1, n do
-        local uid, id, count, charges, stack, name
-        uid,    pos = modules.game_playershop.readPosU32(buffer, pos)
-        id,     pos = modules.game_playershop.readPosU16(buffer, pos)
-        count,  pos = modules.game_playershop.readPosU16(buffer, pos)
-        charges,pos = modules.game_playershop.readPosU16(buffer, pos)
-        stack,  pos = modules.game_playershop.readPosU8(buffer, pos)
-        name,   pos = modules.game_playershop.readPosStr(buffer, pos)
+        local uid, serverId, clientId, count, charges, stack, name
+        uid,      pos = modules.game_playershop.readPosU32(buffer, pos)
+        serverId, pos = modules.game_playershop.readPosU16(buffer, pos)
+        clientId, pos = modules.game_playershop.readPosU16(buffer, pos)
+        count,    pos = modules.game_playershop.readPosU16(buffer, pos)
+        charges,  pos = modules.game_playershop.readPosU16(buffer, pos)
+        stack,    pos = modules.game_playershop.readPosU8(buffer, pos)
+        name,     pos = modules.game_playershop.readPosStr(buffer, pos)
+        -- entry.id holds the CLIENT id so widget:setItemId() renders the sprite
+        -- correctly. entry.serverId is what we echo back on OPEN so the server
+        -- can findItemInDepot via Item:getId() (server-side OTB id).
         inventoryList[#inventoryList + 1] = {
-            uid = uid, id = id, count = count, charges = charges,
+            uid = uid, id = clientId, serverId = serverId,
+            count = count, charges = charges,
             stackable = stack == 1, name = name
         }
     end
