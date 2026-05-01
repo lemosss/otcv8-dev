@@ -313,8 +313,13 @@ end
 
 -- For stackable items, prompt for the quantity (default = full stack). For
 -- non-stackable items, count is always 1 (each entry is one instance).
+-- Guard: prevents double-opening when both onClick (Picker OK) and
+-- onDoubleClick (cell) trigger promptCountAndAssign in quick succession.
+local activeQtyWindow = nil
+
 function promptCountAndAssign(slotIndex, entry)
     if not slotIndex or not entry then return end
+    if activeQtyWindow then return end
     local available = entry.count or 1
     -- Non-stackable: cada entry eh 1 instancia unica, sem prompt.
     if not entry.stackable or available <= 1 then
@@ -324,6 +329,7 @@ function promptCountAndAssign(slotIndex, entry)
     end
 
     local qtyWindow = g_ui.createWidget('QtyWindow', rootWidget)
+    activeQtyWindow = qtyWindow
     qtyWindow:setText(('Quantos? (max %d)'):format(available))
 
     local edit = qtyWindow:recursiveGetChildById('qtyEdit')
@@ -338,16 +344,20 @@ function promptCountAndAssign(slotIndex, entry)
         if n > available then n = available end
         assignItemDirect(slotIndex, entry, n)
         qtyWindow:destroy()
+        activeQtyWindow = nil
         destroyPickerWindow()
     end
 
-    qtyWindow:recursiveGetChildById('qtyOkBtn').onClick = commit
-    qtyWindow:recursiveGetChildById('qtyCancelBtn').onClick = function()
+    local function cancel()
         qtyWindow:destroy()
+        activeQtyWindow = nil
     end
+
+    qtyWindow:recursiveGetChildById('qtyOkBtn').onClick = commit
+    qtyWindow:recursiveGetChildById('qtyCancelBtn').onClick = cancel
     g_keyboard.bindKeyPress('Return', commit, qtyWindow)
     g_keyboard.bindKeyPress('Enter', commit, qtyWindow)
-    g_keyboard.bindKeyPress('Escape', function() qtyWindow:destroy() end, qtyWindow)
+    g_keyboard.bindKeyPress('Escape', cancel, qtyWindow)
 end
 
 function assignItemDirect(index, entry, count)
@@ -440,6 +450,7 @@ end
 function closeCreateShop()
     if createWindow then createWindow:destroy(); createWindow = nil end
     if pickerWindow then pickerWindow:destroy(); pickerWindow = nil end
+    if activeQtyWindow then activeQtyWindow:destroy(); activeQtyWindow = nil end
     -- Limpa o cache pra que a proxima abertura puxe snapshot fresco com
     -- novos uids virtuais alinhados com o depot atual.
     inventoryList = {}
