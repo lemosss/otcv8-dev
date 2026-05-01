@@ -72,7 +72,9 @@ PickerWindow < MainWindow
     margin-top: 10
     margin-bottom: 6
     margin-right: 4
-    background-color: #565656
+    image-source: /images/ui/panel_bottom
+    image-border: 7
+    image-border-top: 7
     padding: 4
     layout:
       type: grid
@@ -235,7 +237,9 @@ CreateShopWindow < MainWindow
     margin-top: 10
     margin-bottom: 6
     margin-right: 4
-    background-color: #565656
+    image-source: /images/ui/panel_bottom
+    image-border: 7
+    image-border-top: 7
     padding: 4
     layout:
       type: verticalBox
@@ -373,9 +377,9 @@ ShopViewWindow < MainWindow
     margin-top: 10
     margin-bottom: 6
     margin-right: 4
-    background-color: #565656
-    border-color: #444444
-    border-width: 1
+    image-source: /images/ui/panel_bottom
+    image-border: 7
+    image-border-top: 7
     padding: 4
     layout:
       type: verticalBox
