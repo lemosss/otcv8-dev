@@ -17,8 +17,19 @@ Makefile
 *.recipe*
 *.gz
 *.7z
-!tests.7z
-!android_libs.7z
+
+# Realera-fork: dropped Android build path entirely.
+android/
+src/android/
+android_libs.7z
+create_android_assets.ps1
+run_android.bat
+
+# Tests harness not used in this fork.
+tests/
+tests.7z
+test.lua
+
 *.spr
 *.dat
 *.kdev*
