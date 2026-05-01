@@ -35,7 +35,7 @@ PickerWindow < MainWindow
     anchors.left: parent.left
     anchors.top: parent.top
     margin-top: 4
-    text: Buscar:
+    text: Search:
 
   TextEdit
     id: searchEdit
@@ -43,7 +43,7 @@ PickerWindow < MainWindow
     anchors.right: parent.right
     anchors.verticalCenter: searchLbl.verticalCenter
     margin-left: 8
-    placeholder: nome do item
+    placeholder: item name
 
   VerticalScrollBar
     id: pickScrollBar
@@ -96,7 +96,7 @@ PickerWindow < MainWindow
     anchors.bottom: parent.bottom
     margin-right: 6
     width: 80
-    text: Cancelar
+    text: Cancel
 
 QtyWindow < MainWindow
   size: 260 130
@@ -128,7 +128,7 @@ QtyWindow < MainWindow
     anchors.bottom: parent.bottom
     margin-right: 6
     width: 80
-    text: Cancelar
+    text: Cancel
 
 ShopBubble < UIWidget
   background-color: #f1f1f1
@@ -199,7 +199,7 @@ CreateShopWindow < MainWindow
     anchors.left: parent.left
     anchors.top: parent.top
     margin-top: 4
-    text: Texto da loja:
+    text: Shop text:
 
   TextEdit
     id: shopText
@@ -207,7 +207,7 @@ CreateShopWindow < MainWindow
     anchors.right: parent.right
     anchors.verticalCenter: textLbl.verticalCenter
     margin-left: 8
-    placeholder: ex. "Vendendo armas baratas!"
+    placeholder: e.g. "Selling cheap weapons!"
     max-length: 45
 
   VerticalScrollBar
@@ -247,7 +247,7 @@ CreateShopWindow < MainWindow
     margin-left: 4
     text-auto-resize: true
     text-wrap: true
-    text: 0 itens, valor total: 0 gold
+    text: 0 items, total: 0 gold
     color: #FFD700
 
   Button
@@ -255,7 +255,7 @@ CreateShopWindow < MainWindow
     anchors.right: parent.right
     anchors.bottom: parent.bottom
     width: 110
-    text: Iniciar Venda
+    text: Start Shop
 
   Button
     id: cancelBtn
@@ -263,7 +263,7 @@ CreateShopWindow < MainWindow
     anchors.bottom: parent.bottom
     margin-right: 6
     width: 90
-    text: Cancelar
+    text: Cancel
 
 ShopBuyCell < UIWidget
   size: 36 36
@@ -283,7 +283,7 @@ ShopBuyCell < UIWidget
 ShopViewWindow < MainWindow
   id: shopViewWindow
   size: 460 470
-  text: Loja
+  text: Shop
   visible: false
 
   Label
@@ -480,6 +480,6 @@ ShopViewWindow < MainWindow
   Label
     id: viewEmptyHint
     anchors.centerIn: viewItems
-    text: (esta loja nao tem itens)
+    text: (this shop has no items)
     color: #888888
     visible: false

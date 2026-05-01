@@ -108,7 +108,7 @@ local origTalk         = nil
 
 local function notifyBlocked()
     if modules.game_textmessage then
-        modules.game_textmessage.displayFailureMessage('Voce nao pode digitar enquanto a loja esta aberta.')
+        modules.game_textmessage.displayStatusMessage('You cannot type while your shop is open.')
     end
 end
 
@@ -203,8 +203,8 @@ function requestShopFromCreature(creature)
     if not creature then return end
     if not withinShopRange(creature) then
         if modules.game_textmessage then
-            modules.game_textmessage.displayBroadcastMessage(
-                "Voce esta longe demais. Aproxime-se do vendedor.")
+            modules.game_textmessage.displayStatusMessage(
+                "You are too far away. Get closer to the seller.")
         end
         return
     end
@@ -319,9 +319,11 @@ local function onReject(proto, opcode, buffer)
         if mod and mod.shop_view_close then mod.shop_view_close() end
     end)
 
-    -- Render as RED warning (centerRed via MessageModes.Warning inside displayBroadcastMessage).
-    if modules.game_textmessage and modules.game_textmessage.displayBroadcastMessage then
-        modules.game_textmessage.displayBroadcastMessage(reason)
+    -- Render as the white server-log line above the chat (Status mode),
+    -- not the red center warning. User wants reject reasons consistent
+    -- with the rest of the shop UI text style.
+    if modules.game_textmessage and modules.game_textmessage.displayStatusMessage then
+        modules.game_textmessage.displayStatusMessage(reason)
         return
     end
     print('[PlayerShop] ' .. reason)
@@ -437,8 +439,8 @@ function init()
                 if dist > SHOP_OPEN_MAX_DISTANCE then
                     if shop_view_close then shop_view_close() end
                     if modules.game_textmessage then
-                        modules.game_textmessage.displayBroadcastMessage(
-                            "Voce se afastou do vendedor. Loja fechada.")
+                        modules.game_textmessage.displayStatusMessage(
+                            "You moved too far from the seller. Shop closed.")
                     end
                 end
             end

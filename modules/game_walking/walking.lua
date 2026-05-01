@@ -271,7 +271,10 @@ function walk(dir, ticks)
     return
   end
 
-  -- Player Shop: total movement lock while selling.
+  -- Player Shop: block WASD / arrow-key movement while OWN shop is open.
+  -- Turning (turn() below), chat, and clicks are allowed; only locomotion
+  -- via the keyboard is gated. Server-side tick still warps the seller
+  -- back if they manage to walk via any other path.
   if modules.game_playershop and modules.game_playershop.iAmSelling then
     return
   end
@@ -410,10 +413,6 @@ end
 
 function turn(dir, repeated)
   local player = g_game.getLocalPlayer()
-  -- Player Shop: block turning while selling.
-  if modules.game_playershop and modules.game_playershop.iAmSelling then
-    return
-  end
   if player:isWalking() and player:getWalkDirection() == dir and not player:isServerWalking() then
     return
   end

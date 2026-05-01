@@ -27,7 +27,7 @@ local function refreshSummary()
             total = total + (s.price or 0) * (s.count or 1)
         end
     end
-    lbl:setText(('%d itens, valor total: %d gold'):format(count, total))
+    lbl:setText(('%d items, total: %d gold'):format(count, total))
 end
 
 -- "Add slot" pseudo-row with a + button. Always rendered last in the panel.
@@ -40,7 +40,7 @@ local function rebuildAddRow()
     for _ in pairs(slots) do count = count + 1 end
     if count >= MAX_SLOTS then return end
     addRowWidget = g_ui.createWidget('Button', panel)
-    addRowWidget:setText('+ adicionar item')
+    addRowWidget:setText('+ add item')
     addRowWidget:setHeight(28)
     addRowWidget.onClick = function()
         local nextIdx = count + 1
@@ -58,7 +58,7 @@ local function buildSlotWidget(index)
     row.itemName   = row:getChildById('itemName')
     row.priceField = row:getChildById('priceField')
     row.removeBtn  = row:getChildById('removeBtn')
-    row.itemName:setText('Slot ' .. index .. ' - clique pra escolher')
+    row.itemName:setText('Slot ' .. index .. ' - click to choose')
 
     row.itemSlot.onClick = function() openItemPicker(index) end
 
@@ -135,7 +135,7 @@ function openItemPicker(slotIndex)
     end
 
     pickerWindow = g_ui.createWidget('PickerWindow', rootWidget)
-    pickerWindow:setText('Escolher item do depot (slot ' .. slotIndex .. ')')
+    pickerWindow:setText('Pick item from depot (slot ' .. slotIndex .. ')')
 
     local cancelBtn = pickerWindow:recursiveGetChildById('pickCancelBtn')
     cancelBtn.onClick = destroyPickerWindow
@@ -268,7 +268,7 @@ function populatePickerList()
 
     if #matches == 0 then
         if emptyHint then
-            emptyHint:setText(pickerSearchText ~= '' and '(nenhum item bate com a busca)' or '(seu depot esta vazio)')
+            emptyHint:setText(pickerSearchText ~= '' and '(no items match the search)' or '(your depot is empty)')
             emptyHint:setVisible(true)
         end
         return
@@ -328,7 +328,7 @@ function promptCountAndAssign(slotIndex, entry)
     destroyPickerWindow()
 
     local qtyWindow = g_ui.createWidget('QtyWindow', rootWidget)
-    qtyWindow:setText(('Quantos? (max %d)'):format(available))
+    qtyWindow:setText(('How many? (max %d)'):format(available))
 
     local edit = qtyWindow:recursiveGetChildById('qtyEdit')
     edit:setText(tostring(available))
@@ -456,7 +456,7 @@ function commitCreateShop()
     local text = createWindow:recursiveGetChildById('shopText'):getText() or ''
     if text:gsub("%s+", "") == "" then
         if modules.game_textmessage then
-            modules.game_textmessage.displayBroadcastMessage('Voce precisa colocar um titulo na loja.')
+            modules.game_textmessage.displayStatusMessage('You need to set a title for the shop.')
         end
         createWindow:recursiveGetChildById('shopText'):focus()
         return

@@ -852,23 +852,6 @@ function sendCurrentMessage()
     return true
   end
 
-  -- Player Shop: while own shop is open, allow only a whitelist of commands.
-  if modules.game_playershop and modules.game_playershop.iAmSelling then
-    local allowed = false
-    local m = message:lower()
-    -- exact / prefix matches:
-    if m == '!fecharloja' or m == '!lojas' then allowed = true end
-    if m:sub(1, 6) == '/shop ' or m == '/shop' then allowed = true end
-    if not allowed then
-      consoleTextEdit:clearText()
-      if modules.game_textmessage then
-        modules.game_textmessage.displayFailureMessage(
-          'Voce so pode digitar !fecharloja enquanto a loja esta aberta.')
-      end
-      return true
-    end
-  end
-
   if not isChatEnabled() then return end
   consoleTextEdit:clearText()
   sendMessage(message)
