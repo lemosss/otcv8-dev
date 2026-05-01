@@ -202,13 +202,6 @@ function populatePickerList()
     pickerSelected = nil
 
     -- Debug: dump do inventoryList recebido do server.
-    print(('[playershop] populatePicker: inventoryList=%d entries, search=%q'):format(
-        #(inventoryList or {}), pickerSearchText or ''))
-    for i, e in ipairs(inventoryList or {}) do
-        print(('  [%d] id=%s count=%s uid=%s stackable=%s name=%q'):format(
-            i, tostring(e.id), tostring(e.count), tostring(e.uid),
-            tostring(e.stackable), tostring(e.name)))
-    end
     do
         local okBtn = pickerWindow:recursiveGetChildById('pickOkBtn')
         if okBtn then okBtn:setEnabled(false) end
@@ -253,20 +246,14 @@ function populatePickerList()
 
         if visible and matchSearch then
             matches[#matches + 1] = {
-                id = e.id, uid = e.uid, charges = e.charges,
+                id = e.id, serverId = e.serverId,
+                uid = e.uid, charges = e.charges,
                 name = e.name, count = effectiveCount,
                 stackable = e.stackable,
             }
         end
     end
     table.sort(matches, function(a, b) return (a.name or '') < (b.name or '') end)
-
-    -- Debug: o que vai virar cell visivel.
-    print(('[playershop] populatePicker: %d matches after filter'):format(#matches))
-    for i, m in ipairs(matches) do
-        print(('  match[%d] id=%s count=%s name=%q'):format(
-            i, tostring(m.id), tostring(m.count), tostring(m.name)))
-    end
 
     if #matches == 0 then
         if emptyHint then
@@ -351,9 +338,12 @@ function promptCountAndAssign(slotIndex, entry)
     qtyWindow:recursiveGetChildById('qtyCancelBtn').onClick = function()
         qtyWindow:destroy()
     end
-    g_keyboard.bindKeyPress('Return', commit, qtyWindow)
-    g_keyboard.bindKeyPress('Enter', commit, qtyWindow)
-    g_keyboard.bindKeyPress('Escape', function() qtyWindow:destroy() end, qtyWindow)
+    -- Some OTCv8 builds don't expose the 'Return' key name and bindKeyPress
+    -- errors with `pairs(nil)` from corelib. pcall each so a missing alias
+    -- doesn't prevent the working ones (Escape always works).
+    pcall(g_keyboard.bindKeyPress, 'Return', commit, qtyWindow)
+    pcall(g_keyboard.bindKeyPress, 'Enter',  commit, qtyWindow)
+    pcall(g_keyboard.bindKeyPress, 'Escape', function() qtyWindow:destroy() end, qtyWindow)
 end
 
 function assignItemDirect(index, entry, count)
