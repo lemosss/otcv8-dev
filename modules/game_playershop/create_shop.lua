@@ -313,13 +313,12 @@ end
 
 -- For stackable items, prompt for the quantity (default = full stack). For
 -- non-stackable items, count is always 1 (each entry is one instance).
--- Guard: prevents double-opening when both onClick (Picker OK) and
--- onDoubleClick (cell) trigger promptCountAndAssign in quick succession.
-local activeQtyWindow = nil
-
 function promptCountAndAssign(slotIndex, entry)
     if not slotIndex or not entry then return end
-    if activeQtyWindow then return end
+    print(('[playershop] promptCountAndAssign slot=%s entry.id=%s count=%s stack=%s')
+        :format(tostring(slotIndex), tostring(entry.id),
+                tostring(entry.count), tostring(entry.stackable)))
+    print(debug.traceback('  caller stack', 2))
     local available = entry.count or 1
     -- Non-stackable: cada entry eh 1 instancia unica, sem prompt.
     if not entry.stackable or available <= 1 then
@@ -329,7 +328,6 @@ function promptCountAndAssign(slotIndex, entry)
     end
 
     local qtyWindow = g_ui.createWidget('QtyWindow', rootWidget)
-    activeQtyWindow = qtyWindow
     qtyWindow:setText(('Quantos? (max %d)'):format(available))
 
     local edit = qtyWindow:recursiveGetChildById('qtyEdit')
@@ -344,20 +342,16 @@ function promptCountAndAssign(slotIndex, entry)
         if n > available then n = available end
         assignItemDirect(slotIndex, entry, n)
         qtyWindow:destroy()
-        activeQtyWindow = nil
         destroyPickerWindow()
     end
 
-    local function cancel()
-        qtyWindow:destroy()
-        activeQtyWindow = nil
-    end
-
     qtyWindow:recursiveGetChildById('qtyOkBtn').onClick = commit
-    qtyWindow:recursiveGetChildById('qtyCancelBtn').onClick = cancel
+    qtyWindow:recursiveGetChildById('qtyCancelBtn').onClick = function()
+        qtyWindow:destroy()
+    end
     g_keyboard.bindKeyPress('Return', commit, qtyWindow)
     g_keyboard.bindKeyPress('Enter', commit, qtyWindow)
-    g_keyboard.bindKeyPress('Escape', cancel, qtyWindow)
+    g_keyboard.bindKeyPress('Escape', function() qtyWindow:destroy() end, qtyWindow)
 end
 
 function assignItemDirect(index, entry, count)
@@ -450,7 +444,6 @@ end
 function closeCreateShop()
     if createWindow then createWindow:destroy(); createWindow = nil end
     if pickerWindow then pickerWindow:destroy(); pickerWindow = nil end
-    if activeQtyWindow then activeQtyWindow:destroy(); activeQtyWindow = nil end
     -- Limpa o cache pra que a proxima abertura puxe snapshot fresco com
     -- novos uids virtuais alinhados com o depot atual.
     inventoryList = {}
