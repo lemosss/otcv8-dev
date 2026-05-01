@@ -15,6 +15,67 @@ OTClientV8 (OTCv8) é um cliente alternativo de código aberto para Tibia. É um
 - Instalar as dependências em x86-windows-static (lista completa no `README.md`).
 - Abrir `vc16/otclient.sln`. O CI compila duas configurações: `DirectX` (gera `otclient_dx.exe`) e `OpenGL` (gera `otclient_gl.exe`).
 
+### Build local em Windows com VS 2022 BuildTools (bit-rot do vcpkg pinado)
+
+A receita acima foi escrita pra VS 2019 + vcpkg de mar/2022. Em ~2026, várias dependências externas pinadas por hash sumiram e o build local quebra em pontos previsíveis. Foi possível buildar com VS 2022 BuildTools 17.14 (sem VS 2019 instalado) aplicando estes patches no `C:\vcpkg-otcv8` (clone separado do `microsoft/vcpkg` no commit pinado):
+
+1. **Toolset v142**: o componente genérico `Microsoft.VisualStudio.Component.VC.v142` foi removido do canal VS 2022. Use o "fixed version" `Microsoft.VisualStudio.Component.VC.14.29.16.11.x86.x64` (instala MSVC 14.29.30133 = v142). Sem ele, o vcpkg-tool de mar/2022 rejeita o VS install com "Unable to find a valid Visual Studio instance" porque ele só reconhece toolsets `14.1x/14.2x/14.3x` — MSVC 14.4x (v143 atual) cai no branch "unknown toolset minor version".
+
+2. **vcpkg.exe correto**: `vcpkg-otcv8` precisa do `vcpkg.exe` que casa com o port tree pinado (`2022-03-09`). Se já existe um `vcpkg.exe` mais novo no diretório, ele falha com `scripts/vcpkg-tools.json: error: calling read_contents failed with 2`. Solução: apagar o exe e rodar `bootstrap-vcpkg.bat` — baixa o `vcpkg.exe` certo de `microsoft/vcpkg-tool/releases/download/2022-03-09/`.
+
+3. **7-Zip 21.07 URL morta**: `vcpkgTools.xml` aponta pra `https://www.7-zip.org/a/7z2107-extra.7z` (404). Baixar do mirror oficial em `https://github.com/ip7z/7zip/releases/download/21.07/7z2107-extra.7z` (SHA-512 confere com o pinado `648d894940bcc29951...`) e colocar em `C:\vcpkg-otcv8\downloads\7z2107-extra.7z`.
+
+4. **MSYS2 pkg-config + libwinpthread URLs rotacionadas**: `repo.msys2.org` só mantém versão atual. As pinadas (`mingw-w64-i686-pkg-config-0.29.2-3` e `libwinpthread-git-9.0.0.6373.5be8fcd83-1`) foram removidas dos mirrors e a Wayback não tem snapshot. Editar `scripts/cmake/vcpkg_find_acquire_program.cmake` pra usar versões atuais (na época da fixa: `pkg-config-0.29.2-6` e `libwinpthread-git-12.0.0.r264.g5c63f0a96-1`) — atualizar URL **e** SHA-512 nas duas chamadas dentro do bloco `vcpkg_acquire_msys(PKGCONFIG_ROOT ...)`. Isso destrava `bzip2`, `liblzma`, `zstd`, `libogg`, `libvorbis`, `libzip`, `glew`, `physfs`, `openal-soft`, `opengl`, `zlib` (todos chamam `vcpkg_fixup_pkgconfig`).
+
+5. **Gerador CMake `Visual Studio 16 2019`**: alguns ports (`openal-soft`, `physfs`) usam `vcpkg_configure_cmake` que mapeia `VCPKG_PLATFORM_TOOLSET=v142` → `-G "Visual Studio 16 2019"`. CMake exige uma instalação real de VS 2019 pra esse gerador — não basta ter o toolset v142 dentro do VS 2022. Editar `scripts/cmake/vcpkg_configure_cmake.cmake`, no branch `v142`, trocar pra `Visual Studio 17 2022` e definir `set(generator_toolset "v142")`; depois adicionar logo após o `-A${generator_arch}`:
+   ```cmake
+   if(DEFINED generator_toolset AND NOT "${generator_toolset}" STREQUAL "")
+       vcpkg_list(APPEND arg_OPTIONS "-T${generator_toolset}")
+   endif()
+   ```
+
+Com tudo isso aplicado, `vcpkg install --triplet x86-windows-static --recurse <lista do build-on-request.yml>` completa, e `MSBuild vc16/otclient.sln /p:Configuration=OpenGL /p:Platform=Win32` (e `=DirectX`) sai limpo gerando `otclient_gl.exe` (~9.6 MB) e `otclient_dx.exe` (~9.4 MB) na raiz.
+
+Os patches são todos contidos em `C:\vcpkg-otcv8` — nenhum arquivo do otcv8-dev é modificado. Se reproduzir num CI moderno, vale automatizar via script (substituições `sed`/`Edit` em cima do clone fresco do vcpkg, mais o pre-stage do `7z2107-extra.7z` em `downloads/`).
+
+#### Estado atual da máquina e como rodar a build
+
+Patches do vcpkg, MSVC 14.29 (v142) e dependências em `x86-windows-static` já estão tudo instalado na máquina (em 2026-04-30). Não precisa repetir os passos acima — apenas rebuildar.
+
+**Rebuildar do zero (quando alterar código C++):**
+
+```powershell
+# Rodar de qualquer terminal — não precisa Developer Command Prompt
+$msbuild = "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe"
+cd "C:\Users\Lemos\Desktop\Realera OT\otcv8-dev\vc16"
+
+# OpenGL (gera otclient_gl.exe na raiz do projeto)
+& $msbuild /m /p:Configuration=OpenGL /p:Platform=Win32 /p:BUILD_REVISION=1 otclient.sln
+
+# DirectX (gera otclient_dx.exe na raiz do projeto)
+& $msbuild /m /p:Configuration=DirectX /p:Platform=Win32 /p:BUILD_REVISION=1 otclient.sln
+```
+
+`/m` paraleliza por core. Build limpo demora ~2-3 min cada config. Build incremental (após editar 1-2 arquivos) é segundos.
+
+**Rodar o cliente:** o `.exe` precisa de `data/`, `modules/`, `layouts/`, `mods/` e `init.lua` ao lado — todos já presentes na raiz do `otcv8-dev/`. É só:
+
+```powershell
+cd "C:\Users\Lemos\Desktop\Realera OT\otcv8-dev"
+.\otclient_gl.exe        # ou .\otclient_dx.exe
+```
+
+Flags úteis (já documentadas em "Execução e testes" abaixo): `--test` (harness de testes), `--mobile` (força layout mobile).
+
+**Reinstalar uma dep do vcpkg** (se um port for atualizado):
+
+```powershell
+cd C:\vcpkg-otcv8
+.\vcpkg.exe install --triplet x86-windows-static --recurse <pacote>
+```
+
+**Limpar build artefacts** (caso uma compilação fique inconsistente): apagar `vc16\Win32\` (objs/PDBs) e os `.exe` da raiz; o linker recria.
+
 ### Linux / macOS
 ```
 mkdir build && cd build && cmake .. && make -j8
@@ -78,3 +139,50 @@ Os módulos são descobertos automaticamente em `modules/` e carregados em faixa
 ## CI
 
 `.github/workflows/ci-cd.yml` compila Windows (DX + GL), Android, macOS e Linux em pushes para `main`/`master`, depois roda `--test` de forma headless no Windows e republica os artefatos no repositório público `OTCv8/otclientv8`. Inclua `[skip release]` na mensagem do commit para pular o pipeline de release. `pr-test.yml` roda em PRs; `build-on-request.yml` é um build acionado manualmente.
+
+## PlayerShop label bubble (source patch em `src/client/creature.cpp`)
+
+A loja de jogador (módulo `modules/game_playershop/`) usa `Creature:setTitle(text, font, color)` para desenhar o nome da loja em cima do char vendedor. Por padrão o engine só renderiza o texto do `m_titleCache` cru -- ficaria flutuando solto sobre o nome. O patch em `Creature::drawInformation` (perto da linha 270, dentro do `if (m_titleCache.hasText())`) embrulha o texto em uma "placa" estilizada:
+
+```cpp
+// Margem vertical entre name e title (sem isso, balao encostava no nome).
+textCenter.y -= 6;
+textRect.setSize(titleSize);
+textRect.moveBottomCenter(textCenter);
+
+// Padding lateral mais largo (4px) que vertical (2px) pro texto respirar.
+Rect bubbleRect(textRect.left() - 4, textRect.top() - 2,
+                textRect.width() + 8, textRect.height() + 4);
+
+// Background cinza escuro semi-transparente (alpha 160 ~ 63%): tile do
+// mapa atras vaza um pouco, dando aparencia de placa leve.
+g_drawQueue->addFilledRect(bubbleRect, Color(50, 50, 50, 160));
+
+// Border dourado fixo (#FFD700), independente do m_titleColor.
+Color gold(255, 215, 0);
+g_drawQueue->addBoundingRect(bubbleRect, 1, gold);
+
+// Quatro "marcadores" dourados de 3x3 px nos cantos, estilo placa
+// fixada (referência de imagem do user). Os pontos sangram metade pra
+// fora do rect pra dar o efeito de fixador.
+int dotSize = 3, half = dotSize / 2;
+int l = bubbleRect.left() - half, r = bubbleRect.right() - half;
+int t = bubbleRect.top() - half,  b = bubbleRect.bottom() - half;
+g_drawQueue->addFilledRect(Rect(l, t, dotSize, dotSize), gold);
+g_drawQueue->addFilledRect(Rect(r, t, dotSize, dotSize), gold);
+g_drawQueue->addFilledRect(Rect(l, b, dotSize, dotSize), gold);
+g_drawQueue->addFilledRect(Rect(r, b, dotSize, dotSize), gold);
+
+m_titleCache.draw(textRect, m_titleColor);
+```
+
+A textura/cor do texto continua vindo do `setTitle` lá no Lua: `playershop.lua` chama `creature:setTitle(text, 'verdana-9px', '#ffffff')` -- `verdana-9px` (sem bold) e branco. Trocar fonte/cor é hot-reload (Ctrl+R no client, sem rebuild).
+
+`setTitle` é exposto pra Lua em `src/client/luafunctions_client.cpp:552-554` -- já existia desde a release prebuilt 3.2 rev 4 por sorte. O patch acima é o único pedaço de C++ que a feature do balão exige; tudo o resto (carregar fonte, decidir quando setar/limpar o título, sincronizar com o servidor) vive em Lua.
+
+Outras features Lua-only do PlayerShop que valem deixar registradas:
+
+- **`SHOP_ICON = 7`** em `Skulls_t` (server-side `src/const.h`) + `ShopIcon = 7` em `modules/gamelib/creature.lua` mapeando para `/modules/game_playershop/icons/shop_icon`. O server retorna esse skull em `Player::getSkullClient` quando o storage `88810 == 1`, e o cliente entrega o ícone via packet `AddCreature` -- mesmo caminho do skull de PK, sem opcode custom. Patch correspondente fica do lado server (Realera TFS 1.5).
+- **Walking lock** em `modules/game_walking/walking.lua`: `walk()` e `turn()` early-return se `modules.game_playershop.iAmSelling`. Junto com o walking lock do servidor, isso garante que o vendedor fique ancorado.
+- **Right-click no chão durante venda**: NÃO modificar `processMouseAction` em `gameinterface.lua` para forçar menu -- isso quebra o classic control (que usa right-click para look/use). O lock só precisa estar em `walking.lua` mesmo; o server também rejeita movimento via `setMovementBlocked(true)` no cylinder do char vendedor.
+- **Right-click no próprio char abre owner-view** (com a loja em modo gerenciar) via menu hook em `playershop.lua`. Esse caminho usa o `gi2.addMenuHook` que é executado pelo `createThingMenu` -- não precisa interceptação manual.

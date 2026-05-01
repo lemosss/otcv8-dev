@@ -266,17 +266,42 @@ void Creature::drawInformation(const Point& point, bool useGray, const Rect& par
         if (m_titleCache.hasText()) {
             Size titleSize = m_titleCache.getTextSize();
             Point textCenter = textRect.topCenter();
+            // 6px de margem vertical entre o name e o balao do title
+            // pra eles nao ficarem encostados.
+            textCenter.y -= 6;
             textRect.setSize(titleSize);
             textRect.moveBottomCenter(textCenter);
 
-            // PlayerShop label bubble: rect com padding em volta do texto +
-            // border na cor passada (m_titleColor). O tamanho se adapta
-            // automaticamente ao texto via titleSize. Outros usos do
-            // setTitle continuam funcionando -- isso so adiciona o
-            // background/border sem mudar a cor do texto.
-            Rect bubbleRect = textRect.expanded(3);
-            g_drawQueue->addFilledRect(bubbleRect, Color(0, 0, 0, 220));
-            g_drawQueue->addBoundingRect(bubbleRect, 1, m_titleColor);
+            // PlayerShop label bubble:
+            //   - Background preto solido com 4/2 px de padding em volta
+            //     do texto (mais espaco horizontal pra "respirar").
+            //   - Border dourado fixo, independente da cor do texto.
+            //   - Texto desenhado na cor passada via setTitle (m_titleColor).
+            // Padding maior na horizontal (4px) que na vertical (2px) pra
+            // o texto "respirar" lateralmente; expanded(N) ficaria simetrico.
+            Rect bubbleRect(textRect.left() - 4, textRect.top() - 2,
+                            textRect.width() + 8, textRect.height() + 4);
+            // Cinza escuro semi-transparente (alpha 160 ~ 63%): a tile do
+            // mapa atras vaza um pouco, dando sensacao de "placa" leve.
+            g_drawQueue->addFilledRect(bubbleRect, Color(50, 50, 50, 160));
+
+            // Border dourado fixo, independente da cor do texto.
+            Color gold(255, 215, 0);
+            g_drawQueue->addBoundingRect(bubbleRect, 1, gold);
+
+            // Quatro "pontos" decorativos dourados em cada canto do balao
+            // (efeito marcador estilo placa dourada, igual referencia do
+            // user). 3x3 px cada, centralizados em cima dos cantos.
+            int dotSize = 3;
+            int half = dotSize / 2;  // = 1
+            int l = bubbleRect.left()   - half;
+            int r = bubbleRect.right()  - half;
+            int t = bubbleRect.top()    - half;
+            int b = bubbleRect.bottom() - half;
+            g_drawQueue->addFilledRect(Rect(l, t, dotSize, dotSize), gold);
+            g_drawQueue->addFilledRect(Rect(r, t, dotSize, dotSize), gold);
+            g_drawQueue->addFilledRect(Rect(l, b, dotSize, dotSize), gold);
+            g_drawQueue->addFilledRect(Rect(r, b, dotSize, dotSize), gold);
 
             m_titleCache.draw(textRect, m_titleColor);
         }

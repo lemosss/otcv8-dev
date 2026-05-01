@@ -597,8 +597,8 @@ function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, u
   -- PlayerShop quick-open: left-click numa creature vendendo abre a loja
   -- direto, sem precisar do menu "Open Shop". Soh dispara sem modifier
   -- (Shift/Ctrl/Alt continuam fazendo look/use/attack como sempre).
-  -- Limita a 3 SQM de distancia (Chebyshev): so pode abrir loja de
-  -- vendedor que esteja perto.
+  -- Limita a 1 SQM de distancia (Chebyshev): so pode abrir loja de
+  -- vendedor que esteja adjacente.
   if mouseButton == MouseLeftButton and keyboardModifiers == KeyboardNoModifier
       and creatureThing and creatureThing:isPlayer() then
     local lp = g_game.getLocalPlayer()
