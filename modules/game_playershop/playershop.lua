@@ -398,7 +398,6 @@ function init()
                 return sellingCreatures[creature:getId()] ~= nil
             end
         )
-        print('[playershop] menu hooks registered')
     end, 1500)
 
     -- All optional setup wrapped in pcalls so nothing breaks the hook.

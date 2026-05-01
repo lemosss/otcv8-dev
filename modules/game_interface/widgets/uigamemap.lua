@@ -64,7 +64,10 @@ function UIGameMap:onDrop(widget, mousePos)
   local thingPos = thing:getPosition()
   if thingPos.x == toPos.x and thingPos.y == toPos.y and thingPos.z == toPos.z then return false end
 
-  if thing:isItem() and thing:getCount() > 1 then
+  -- Runes (server 2260-2316 / client.dat 3147-3203) are charge-flagged, so
+  -- getCount() returns 1 even when the visible stack has 5. Route them through
+  -- moveStackableItem just like gold so the player gets the quantity prompt.
+  if thing:isItem() and modules.game_interface.getEffectiveCount(thing) > 1 then
     modules.game_interface.moveStackableItem(thing, toPos)
   else
     g_game.move(thing, toPos, 1)

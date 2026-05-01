@@ -448,7 +448,9 @@ function createThingMenu(menuPosition, lookThing, useThing, creatureThing)
   if lookThing then
     local parentContainer = lookThing:getParentContainer()
     if parentContainer and parentContainer:hasParent() then
-      menu:addOption(tr('Move up'), function() g_game.moveToParentContainer(lookThing, lookThing:getCount()) end)
+      menu:addOption(tr('Move up'), function()
+        g_game.moveToParentContainer(lookThing, getEffectiveCount(lookThing))
+      end)
     end
   end
 
@@ -784,18 +786,31 @@ function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, u
   return false
 end
 
+-- Effective stack size, considering that runes (server 2260-2316 / client.dat
+-- 3147-3203) are charge-flagged in the .dat -- so getCount() always returns 1
+-- and the visible stack size lives in getCountOrSubType().
+function getEffectiveCount(item)
+  local id = item:getId()
+  if id >= 3147 and id <= 3203 then
+    local n = item:getCountOrSubType()
+    if n < 1 then n = 1 end
+    return n
+  end
+  return item:getCount()
+end
+
 function moveStackableItem(item, toPos)
   if countWindow then
     return
   end
+  local count = getEffectiveCount(item)
   if g_keyboard.isCtrlPressed() then
-    g_game.move(item, toPos, item:getCount())
+    g_game.move(item, toPos, count)
     return
   elseif g_keyboard.isShiftPressed() then
     g_game.move(item, toPos, 1)
     return
   end
-  local count = item:getCount()
 
   countWindow = g_ui.createWidget('CountWindow', rootWidget)
   local itembox = countWindow:getChildById('item')
@@ -828,7 +843,10 @@ function moveStackableItem(item, toPos)
   end
   local okButton = countWindow:getChildById('buttonOk')
   local moveFunc = function()
-    g_game.move(item, toPos, itembox:getItemCount())
+    -- itembox:getItemCount() returns 1 for charge-flagged items in the .dat
+    -- (e.g. runes), even after setItemCount(N). Use getItemCountOrSubType()
+    -- which is the raw byte we displayed.
+    g_game.move(item, toPos, itembox:getItemCountOrSubType())
     okButton:getParent():destroy()
     countWindow = nil
   end
