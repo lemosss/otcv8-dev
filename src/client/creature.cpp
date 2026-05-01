@@ -268,6 +268,16 @@ void Creature::drawInformation(const Point& point, bool useGray, const Rect& par
             Point textCenter = textRect.topCenter();
             textRect.setSize(titleSize);
             textRect.moveBottomCenter(textCenter);
+
+            // PlayerShop label bubble: rect com padding em volta do texto +
+            // border na cor passada (m_titleColor). O tamanho se adapta
+            // automaticamente ao texto via titleSize. Outros usos do
+            // setTitle continuam funcionando -- isso so adiciona o
+            // background/border sem mudar a cor do texto.
+            Rect bubbleRect = textRect.expanded(3);
+            g_drawQueue->addFilledRect(bubbleRect, Color(0, 0, 0, 220));
+            g_drawQueue->addBoundingRect(bubbleRect, 1, m_titleColor);
+
             m_titleCache.draw(textRect, m_titleColor);
         }
 
