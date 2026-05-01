@@ -9,7 +9,7 @@ PickerCell < UIWidget
     background-color: #3a3a3a
     border-color: #FFD700
   $on:
-    background-color: #4a4030
+    background-color: #565656
     border-color: #FFD700
 
   Item
