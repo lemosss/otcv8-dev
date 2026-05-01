@@ -9,6 +9,7 @@ SkullWhite = 3
 SkullRed = 4
 SkullBlack = 5
 SkullOrange = 6
+ShopIcon = 7    -- PlayerShop: vendedor com loja ativa (server envia via skull-slot do AddCreature)
 
 ShieldNone = 0
 ShieldWhiteYellow = 1
@@ -62,6 +63,9 @@ function getSkullImagePath(skullId)
     path = '/images/game/skulls/skull_black'
   elseif skullId == SkullOrange then
     path = '/images/game/skulls/skull_orange'
+  elseif skullId == ShopIcon then
+    -- Mapping para o icone da loja player-shop (ver modules/game_playershop).
+    path = '/modules/game_playershop/icons/shop_icon'
   end
   return path
 end

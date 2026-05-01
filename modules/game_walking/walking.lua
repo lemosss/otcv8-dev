@@ -264,10 +264,15 @@ function onCancelWalk(player)
   player:lockWalk(50)
 end
 
-function walk(dir, ticks) 
+function walk(dir, ticks)
   lastManualWalk = g_clock.millis()
   local player = g_game.getLocalPlayer()
   if not player or g_game.isDead() or player:isDead() then
+    return
+  end
+
+  -- Player Shop: total movement lock while selling.
+  if modules.game_playershop and modules.game_playershop.iAmSelling then
     return
   end
 
@@ -405,6 +410,10 @@ end
 
 function turn(dir, repeated)
   local player = g_game.getLocalPlayer()
+  -- Player Shop: block turning while selling.
+  if modules.game_playershop and modules.game_playershop.iAmSelling then
+    return
+  end
   if player:isWalking() and player:getWalkDirection() == dir and not player:isServerWalking() then
     return
   end

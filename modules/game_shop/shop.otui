@@ -20,14 +20,12 @@ ShopCategory < Panel
 ShopCategoryItem < ShopCategory
   UIItem
     id: item
-    anchors.top: parent.top
+    anchors.verticalCenter: parent.verticalCenter
     anchors.left: parent.left
-    anchors.bottom: parent.bottom
-    margin-top: 2
-    margin-bottom: 2
-    margin-left: 2
-    virtual: true
+    margin-left: 4
     size: 32 32
+    virtual: true
+    show-count: false
     
 ShopCategoryCreature < ShopCategory
   UICreature
@@ -235,6 +233,22 @@ MainWindow
     margin-left: 10
     anchors.verticalCenter: prev.verticalCenter
     @onClick: modules.game_shop.showTransfer()
+
+  Button
+    id: getCoins
+    !text: tr('Get')
+    width: 90
+    anchors.left: prev.right
+    margin-left: 10
+    anchors.verticalCenter: prev.verticalCenter
+    image-color: #4ea84e
+    color: #ffffff
+    icon-source: /images/game/slots/coins
+    icon-clip: 0 0 16 16
+    icon-align: right
+    icon-offset: -8 0
+    text-offset: -10 1
+    @onClick: modules.game_shop.openGetCoins()
 
   Button
     id: buttonCancel

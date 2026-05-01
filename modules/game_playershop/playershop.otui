@@ -1,0 +1,397 @@
+PickerCell < UIWidget
+  size: 56 64
+  background-color: #2c2c2c
+  border-color: #4a4a4a
+  border-width: 1
+  border-radius: 3
+  focusable: true
+  $hover:
+    background-color: #3a3a3a
+    border-color: #FFD700
+  $on:
+    background-color: #4a4030
+    border-color: #FFD700
+
+  Item
+    id: cellItem
+    anchors.top: parent.top
+    anchors.horizontalCenter: parent.horizontalCenter
+    margin-top: 3
+    size: 32 32
+    virtual: true
+    show-count: true
+    phantom: true
+
+  Label
+    id: cellName
+    anchors.bottom: parent.bottom
+    anchors.left: parent.left
+    anchors.right: parent.right
+    margin-bottom: 1
+    text-align: center
+    text-wrap: false
+    color: #dddddd
+    font: verdana-9px
+    phantom: true
+
+PickerWindow < MainWindow
+  size: 420 460
+
+  Label
+    id: searchLbl
+    anchors.left: parent.left
+    anchors.top: parent.top
+    margin-top: 4
+    text: Buscar:
+
+  TextEdit
+    id: searchEdit
+    anchors.left: searchLbl.right
+    anchors.right: parent.right
+    anchors.verticalCenter: searchLbl.verticalCenter
+    margin-left: 8
+    placeholder: nome do item
+
+  VerticalScrollBar
+    id: pickScrollBar
+    anchors.top: searchLbl.bottom
+    anchors.bottom: pickCancelBtn.top
+    anchors.right: parent.right
+    margin-top: 10
+    margin-bottom: 6
+    width: 12
+    step: 56
+    pixels-scroll: true
+
+  ScrollablePanel
+    id: gridPanel
+    anchors.left: parent.left
+    anchors.right: pickScrollBar.left
+    anchors.top: searchLbl.bottom
+    anchors.bottom: pickCancelBtn.top
+    margin-top: 10
+    margin-bottom: 6
+    margin-right: 4
+    background-color: #1a1a1a
+    padding: 4
+    layout:
+      type: grid
+      cell-size: 56 64
+      cell-spacing: 3
+      flow: true
+    vertical-scrollbar: pickScrollBar
+
+  Label
+    id: emptyHintLbl
+    anchors.centerIn: gridPanel
+    text: (seu depot esta vazio)
+    color: #888888
+    visible: false
+
+  Button
+    id: pickOkBtn
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    width: 80
+    text: OK
+    enabled: false
+
+  Button
+    id: pickCancelBtn
+    anchors.right: pickOkBtn.left
+    anchors.bottom: parent.bottom
+    margin-right: 6
+    width: 80
+    text: Cancelar
+
+QtyWindow < MainWindow
+  size: 260 130
+
+  Label
+    id: qtyLbl
+    anchors.top: parent.top
+    anchors.left: parent.left
+    margin-top: 4
+    text: Quantidade:
+
+  TextEdit
+    id: qtyEdit
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: qtyLbl.bottom
+    margin-top: 6
+
+  Button
+    id: qtyOkBtn
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    width: 70
+    text: OK
+
+  Button
+    id: qtyCancelBtn
+    anchors.right: qtyOkBtn.left
+    anchors.bottom: parent.bottom
+    margin-right: 6
+    width: 80
+    text: Cancelar
+
+ShopBubble < UIWidget
+  background-color: #f1f1f1
+  border-color: #4a4a4a
+  border-width: 1
+  border-radius: 3
+  text-align: center
+  text-wrap: false
+  text-auto-resize: true
+  color: #1a1a1a
+  font: verdana-11px-rounded
+  padding: 2 6 2 6
+
+ShopSlot < UIWidget
+  height: 36
+  background-color: #2c2c2c
+  border-width: 1
+  border-color: #444444
+  border-radius: 4
+  margin-bottom: 4
+
+  Item
+    id: itemSlot
+    anchors.left: parent.left
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 4
+    size: 32 32
+    virtual: true
+    show-count: true
+
+  Button
+    id: removeBtn
+    anchors.right: parent.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-right: 4
+    size: 22 22
+    text: x
+    color: red
+
+  TextEdit
+    id: priceField
+    anchors.right: removeBtn.left
+    anchors.verticalCenter: parent.verticalCenter
+    margin-right: 6
+    width: 90
+    placeholder: gold
+
+  Label
+    id: itemName
+    anchors.left: itemSlot.right
+    anchors.right: priceField.left
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 8
+    margin-right: 8
+    color: #dddddd
+    font: verdana-11px-monochrome
+    text-align: left
+
+CreateShopWindow < MainWindow
+  id: createShopWindow
+  text: Criar Loja
+  size: 480 540
+  visible: false
+
+  Label
+    id: textLbl
+    anchors.left: parent.left
+    anchors.top: parent.top
+    margin-top: 4
+    text: Texto da loja:
+
+  TextEdit
+    id: shopText
+    anchors.left: textLbl.right
+    anchors.right: parent.right
+    anchors.verticalCenter: textLbl.verticalCenter
+    margin-left: 8
+    placeholder: ex. "Vendendo armas baratas!"
+    max-length: 45
+
+  VerticalScrollBar
+    id: scrollBar
+    anchors.top: textLbl.bottom
+    anchors.bottom: summaryLbl.top
+    anchors.right: parent.right
+    margin-top: 10
+    margin-bottom: 6
+    width: 12
+    step: 36
+    pixels-scroll: true
+
+  ScrollablePanel
+    id: slotsPanel
+    anchors.left: parent.left
+    anchors.right: scrollBar.left
+    anchors.top: textLbl.bottom
+    anchors.bottom: summaryLbl.top
+    margin-top: 10
+    margin-bottom: 6
+    margin-right: 4
+    background-color: #1a1a1a
+    padding: 4
+    layout:
+      type: verticalBox
+      spacing: 0
+    vertical-scrollbar: scrollBar
+
+  Label
+    id: summaryLbl
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: startBtn.top
+    margin-bottom: 6
+    margin-left: 4
+    text-auto-resize: true
+    text-wrap: true
+    text: 0 itens, valor total: 0 gold
+    color: #FFD700
+
+  Button
+    id: startBtn
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    width: 110
+    text: Iniciar Venda
+
+  Button
+    id: cancelBtn
+    anchors.right: startBtn.left
+    anchors.bottom: parent.bottom
+    margin-right: 6
+    width: 90
+    text: Cancelar
+
+ShopBuyRow < UIWidget
+  height: 44
+  background-color: #2c2c2c
+  border-color: #444444
+  border-width: 1
+  border-radius: 3
+  margin-bottom: 4
+
+  Item
+    id: itemSlot
+    anchors.left: parent.left
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    size: 36 36
+    virtual: true
+    show-count: true
+    phantom: true
+
+  Label
+    id: itemName
+    anchors.left: itemSlot.right
+    anchors.top: parent.top
+    margin-left: 8
+    margin-top: 6
+    color: #ffffff
+    font: verdana-11px-monochrome
+    text-align: left
+
+  Label
+    id: itemPrice
+    anchors.left: itemSlot.right
+    anchors.bottom: parent.bottom
+    margin-left: 8
+    margin-bottom: 6
+    color: #FFD700
+    font: verdana-11px-rounded
+    text-align: left
+
+  Button
+    id: buyBtn
+    anchors.right: parent.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-right: 6
+    width: 70
+    text: Comprar
+
+  TextEdit
+    id: qtyField
+    anchors.right: buyBtn.left
+    anchors.verticalCenter: parent.verticalCenter
+    margin-right: 6
+    width: 50
+    text: 1
+
+ShopViewWindow < MainWindow
+  id: shopViewWindow
+  size: 460 540
+  text: Loja
+  visible: false
+
+  Label
+    id: sellerLine
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: parent.top
+    margin-top: 4
+    color: #FFD700
+    font: verdana-11px-rounded
+    text-align: left
+    text-auto-resize: true
+    text-wrap: true
+    text: Vendedor: ?
+
+  Label
+    id: sellerText
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: sellerLine.bottom
+    margin-top: 4
+    color: #dddddd
+    font: verdana-11px-monochrome
+    text-wrap: true
+    text-auto-resize: true
+
+  VerticalScrollBar
+    id: viewScrollBar
+    anchors.top: sellerText.bottom
+    anchors.bottom: closeBtn.top
+    anchors.right: parent.right
+    margin-top: 10
+    margin-bottom: 6
+    width: 12
+    step: 48
+    pixels-scroll: true
+
+  ScrollablePanel
+    id: viewItems
+    anchors.left: parent.left
+    anchors.right: viewScrollBar.left
+    anchors.top: sellerText.bottom
+    anchors.bottom: closeBtn.top
+    margin-top: 10
+    margin-bottom: 6
+    margin-right: 4
+    background-color: #1a1a1a
+    border-color: #444444
+    border-width: 1
+    padding: 4
+    layout:
+      type: verticalBox
+      spacing: 0
+    vertical-scrollbar: viewScrollBar
+
+  Label
+    id: viewEmptyHint
+    anchors.centerIn: viewItems
+    text: (esta loja nao tem itens)
+    color: #888888
+    visible: false
+
+  Button
+    id: closeBtn
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    width: 80
+    text: Fechar

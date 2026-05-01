@@ -143,7 +143,13 @@ function init()
   g_keyboard.bindKeyPress('Shift+Down', function() navigateMessageHistory(-1) end, consolePanel)
   g_keyboard.bindKeyPress('Tab', function() consoleTabBar:selectNextTab() end, consolePanel)
   g_keyboard.bindKeyPress('Shift+Tab', function() consoleTabBar:selectPrevTab() end, consolePanel)
-  g_keyboard.bindKeyDown('Enter', sendCurrentMessage, consolePanel)
+  -- bind on rootWidget so Enter fires regardless of focus (textedit,
+  -- viewport, etc.). sendCurrentMessage handles all three cases:
+  -- send / toggle-to-WASD / toggle-to-chat. Returning true consumes
+  -- the event so the gameRootPanel quickFunc bindings (still installed
+  -- by enableChat/disableChat for backwards compatibility) do not
+  -- double-fire.
+  g_keyboard.bindKeyDown('Enter', sendCurrentMessage, rootWidget)
   g_keyboard.bindKeyPress('Ctrl+A', function() consoleTextEdit:clearText() end, consolePanel)
 
   -- apply buttom functions after loaded
@@ -206,18 +212,17 @@ function enableChat(temporarily)
   consoleTextEdit:setText("")
   consoleTextEdit:focus()
 
-  local gameRootPanel = modules.game_interface.getRootPanel()
-  g_keyboard.unbindKeyDown("Enter", gameRootPanel)
-  
+  -- Enter is handled by the rootWidget sendCurrentMessage binding.
+  -- For temporary chat (driven by hotkeys_extra.toogleWsad), keep
+  -- Escape as a cancel-back-to-WASD shortcut.
   if temporarily then
-    local quickFunc = function()
+    local gameRootPanel = modules.game_interface.getRootPanel()
+    local escFunc = function()
       if not g_game.isOnline() then return end
-      g_keyboard.unbindKeyDown("Enter", gameRootPanel)
       g_keyboard.unbindKeyDown("Escape", gameRootPanel)
       disableChat(temporarily)
     end
-    g_keyboard.bindKeyDown("Enter", quickFunc, gameRootPanel)
-    g_keyboard.bindKeyDown("Escape", quickFunc, gameRootPanel)  
+    g_keyboard.bindKeyDown("Escape", escFunc, gameRootPanel)
   end
 
   modules.game_walking.disableWSAD()
@@ -237,16 +242,9 @@ function disableChat(temporarily)
   consoleTextEdit:setVisible(false)
   consoleTextEdit:setText("")
 
-  local quickFunc = function()
-    if not g_game.isOnline() then return end
-    if consoleToggleChat:isChecked() then
-      consoleToggleChat:setChecked(false)
-    end
-    enableChat(true)
-  end
-  
-  local gameRootPanel = modules.game_interface.getRootPanel()
-  g_keyboard.bindKeyDown("Enter", quickFunc, gameRootPanel)
+  -- Enter is handled by the rootWidget sendCurrentMessage binding,
+  -- which calls enableChat() when chat is disabled and text is empty.
+  -- No separate gameRootPanel quickFunc needed.
 
   modules.game_walking.enableWSAD()
 
@@ -662,6 +660,7 @@ function addTabText(text, speaktype, tab, creatureName)
     return true
   end
   label.onDragLeave = function(self, droppedWidget, mousePos)
+    if not consoleBuffer.selection then return true end  -- nothing selected; ignore
     local text = {}
     for selectionChild = consoleBuffer.selection.first, consoleBuffer.selection.last do
       local label = self:getParent():getChildByIndex(selectionChild)
@@ -839,13 +838,42 @@ function processMessageMenu(mousePos, mouseButton, creatureName, text, label, ta
 end
 
 function sendCurrentMessage()
+  if g_app.isMobile() or not g_game.isOnline() then return end
+
   local message = consoleTextEdit:getText()
-  if #message == 0 then return end
+
+  -- empty Enter: toggle chat <-> WASD without needing a mouse click
+  if #message == 0 then
+    if isChatEnabled() then
+      disableChat()
+    else
+      enableChat()
+    end
+    return true
+  end
+
+  -- Player Shop: while own shop is open, allow only a whitelist of commands.
+  if modules.game_playershop and modules.game_playershop.iAmSelling then
+    local allowed = false
+    local m = message:lower()
+    -- exact / prefix matches:
+    if m == '!fecharloja' or m == '!lojas' then allowed = true end
+    if m:sub(1, 6) == '/shop ' or m == '/shop' then allowed = true end
+    if not allowed then
+      consoleTextEdit:clearText()
+      if modules.game_textmessage then
+        modules.game_textmessage.displayFailureMessage(
+          'Voce so pode digitar !fecharloja enquanto a loja esta aberta.')
+      end
+      return true
+    end
+  end
+
   if not isChatEnabled() then return end
   consoleTextEdit:clearText()
-
-  -- send message
   sendMessage(message)
+  disableChat()
+  return true
 end
 
 function addFilter(filter)
@@ -965,7 +993,20 @@ function sendMessage(message, tab)
       name = chatCommandPrivate
       isPrivateCommand = true
     elseif tab.npcChat then
-      speaktypedesc = 'privatePlayerToNpc'
+      -- Pre-8.20 protocols (Tibia 7.x) had no separate NpcTo packet; the
+      -- client-side protocol mapping has no entry for MessageNpcTo on
+      -- those versions, so the wire byte ends up bogus and the OTX 7.72
+      -- server drops it in Game::playerSay's default case. The original
+      -- Cipsoft 7.x clients always used local SAY for NPC dialogue, so
+      -- do the same here when running on a legacy protocol -- the NPCs
+      -- tab UI still works because incoming NpcFrom replies are routed
+      -- by addPrivateText regardless of how the player's outgoing line
+      -- was sent.
+      if g_game.getClientVersion() < 820 then
+        speaktypedesc = 'say'
+      else
+        speaktypedesc = 'privatePlayerToNpc'
+      end
     elseif tab == violationReportTab then
       if violationReportTab.locked then
         modules.game_textmessage.displayFailureMessage('Wait for a gamemaster reply.')
@@ -1051,6 +1092,9 @@ function onTalk(name, level, mode, message, channelId, creaturePos)
     modules.game_textmessage.displayBroadcastMessage(name .. ': ' .. message)
     return
   end
+
+  -- (Player Shop chat-log filter removed: bubbles are now rendered entirely
+  -- client-side via StaticText, no server `say` calls, so nothing to filter.)
 
   local isNpcMode = (mode == MessageModes.NpcFromStartBlock or mode == MessageModes.NpcFrom)
 

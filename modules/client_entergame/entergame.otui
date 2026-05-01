@@ -35,6 +35,8 @@ EnterGameWindow
     anchors.top: prev.bottom
     text-auto-resize: true
     margin-top: 8
+    visible: false
+    height: 0
 
   TextEdit
     id: accountTokenTextEdit
@@ -42,12 +44,14 @@ EnterGameWindow
     anchors.right: parent.right
     anchors.top: prev.bottom
     margin-top: 2
+    visible: false
+    height: 0
 
   Panel
     id: serverSelectorPanel
     anchors.left: parent.left
     anchors.right: parent.right
-    anchors.top: prev.bottom
+    anchors.top: accountPasswordTextEdit.bottom
     height: 52
     on: true
     focusable: false
@@ -93,7 +97,7 @@ EnterGameWindow
     anchors.right: parent.right
     anchors.top: prev.bottom
     height: 52
-    on: true
+    on: false
     focusable: true
     
     $on:

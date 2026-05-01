@@ -66,17 +66,6 @@ function setupExtraHotkeys(combobox)
     end
   end)
 
-  addExtraHotkey("toogleWsad", "Enable/disable wsad walking", function(repeated)
-    if repeated or not modules.game_console then
-      return
-    end
-    if not modules.game_console.consoleToggleChat:isChecked() then
-      modules.game_console.disableChat(true) 
-    else
-      modules.game_console.enableChat(true) 
-    end    
-  end)  
-  
   for index, actionDetails in ipairs(extraHotkeys) do
     combobox:addOption(actionDetails.description)
   end

@@ -10,6 +10,20 @@ end
 function UIMiniWindow:open(dontSave)
   self:setVisible(true)
 
+  -- When (re)opening a closed miniwindow, push it to the bottom of its
+  -- container instead of leaving it at whatever miniIndex was saved.
+  -- That way Skills/Battle/VIP/etc. stack below the always-open windows
+  -- (Minimap/Health/Inventory) instead of forcing themselves between them.
+  local parent = self:getParent()
+  if parent and parent:getClassName() == 'UIMiniWindowContainer' then
+    local lastIndex = parent:getChildCount()
+    parent:moveChildToIndex(self, lastIndex)
+    self.miniIndex = lastIndex
+    if not dontSave then
+      self:setSettings({index = lastIndex})
+    end
+  end
+
   if not dontSave then
     self:setSettings({closed = false})
   end

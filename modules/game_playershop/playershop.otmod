@@ -1,0 +1,8 @@
+Module
+  name: game_playershop
+  description: Player Shop (Priston Tale style)
+  author: realera-team
+  sandboxed: true
+  scripts: [ playershop, create_shop, shop_view ]
+  @onLoad: init()
+  @onUnload: terminate()

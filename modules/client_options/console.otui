@@ -18,6 +18,8 @@ OptionPanel
   OptionCheckBox
     id: showLevelsInConsole
     !text: tr('Show levels in console')
+    visible: false
+    height: 0
 
   OptionCheckBox
     id: showPrivateMessagesInConsole

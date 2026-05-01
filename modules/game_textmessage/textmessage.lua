@@ -24,7 +24,12 @@ MessageTypes = {
   [MessageModes.Warning] = MessageSettings.centerRed,
   [MessageModes.Look] = MessageSettings.centerGreen,
   [MessageModes.Loot] = MessageSettings.centerGreen,
-  [MessageModes.Red] = MessageSettings.consoleRed,
+  -- This OTCv8 binary (3.2 rev 4) maps wire byte 22 to MessageRed instead of
+  -- MessageLook (the github source for the same commit says it should be Look,
+  -- but the shipped binary's translateMessageModeFromServer differs). Route
+  -- Red through centerGreen so /look text renders as floating green +
+  -- Server Log tab, matching real Tibia 7.72 behaviour.
+  [MessageModes.Red] = MessageSettings.centerGreen,
   [MessageModes.Blue] = MessageSettings.consoleBlue,
   [MessageModes.PrivateFrom] = MessageSettings.consoleBlue,
 

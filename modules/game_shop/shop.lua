@@ -37,15 +37,15 @@ end
 -- public functions
 function init()
   connect(g_game, {
-    onGameStart = check, 
+    onGameStart = onShopGameStart,
     onGameEnd = hide,
     onStoreInit = onStoreInit,
     onStoreCategories = onStoreCategories,
     onStoreOffers = onStoreOffers,
-    onStoreTransactionHistory = onStoreTransactionHistory,    
+    onStoreTransactionHistory = onStoreTransactionHistory,
     onStorePurchase = onStorePurchase,
     onStoreError = onStoreError,
-    onCoinBalance = onCoinBalance    
+    onCoinBalance = onCoinBalance
   })
 
   ProtocolGame.registerExtendedJSONOpcode(SHOP_EXTENTED_OPCODE, onExtendedJSONOpcode)
@@ -59,7 +59,7 @@ end
 
 function terminate()
   disconnect(g_game, {
-    onGameStart = check, 
+    onGameStart = onShopGameStart,
     onGameEnd = hide,
     onStoreInit = onStoreInit,
     onStoreCategories = onStoreCategories,
@@ -89,6 +89,21 @@ end
 function check()
   otcv8shop = false
   sendAction("init")
+end
+
+-- Tibia.dat sprites are not always ready when this module's init() runs,
+-- which made the ShopCategoryItem icons render blank even after addCategory
+-- assigned them. Refresh the local categories on game start so the
+-- UIItem.setItemId calls hit a fully-loaded dat.
+function onShopGameStart()
+  check()
+  if shop and shop.categories then
+    while shop.categories:getChildCount() > 0 do
+      shop.categories:destroyChildren(shop.categories:getLastChild())
+    end
+  end
+  CATEGORIES = {}
+  addLocalCategories()
 end
 
 function hide()
@@ -149,8 +164,42 @@ function createShop()
   if shop then return end
   shop = g_ui.displayUI('shop')
   shop:hide()
-  shopButton = modules.client_topmenu.addRightGameToggleButton('shopButton', tr('Shop'), '/images/topbuttons/shop', toggle, false, 8)
+  shopButton = modules.client_topmenu.addRightGameToggleButton('shopButton', tr('Shop'), '/images/topbuttons/shop', toggle, false, 99)
   connect(shop.categories, { onChildFocusChange = changeCategory })
+  addLocalCategories()
+end
+
+-- Local categories are injected client-side so the Shop window has
+-- something to show even when the server does not push a category list
+-- (TFS-1.5-Downgrades does not implement the OTCv8 extended-shop
+-- protocol). They are also re-appended after processCategories() in
+-- case a server later sends its own list.
+local LOCAL_CATEGORIES = {
+  {
+    type = "item",
+    item = 2819,
+    count = 1,
+    name = "Premium Time",
+    offers = {
+      {id = "premium_15",  type = "item", item = 2819, count = 1, cost = 200, title = "Premium Account 15 days",  description = "15 days of Premium Account"},
+      {id = "premium_30",  type = "item", item = 2819, count = 1, cost = 300, title = "Premium Account 30 days",  description = "30 days of Premium Account"},
+      {id = "premium_60",  type = "item", item = 2819, count = 1, cost = 500, title = "Premium Account 60 days",  description = "60 days of Premium Account"},
+      {id = "premium_120", type = "item", item = 2819, count = 1, cost = 950, title = "Premium Account 120 days", description = "120 days of Premium Account"},
+    },
+  },
+}
+
+function addLocalCategories()
+  for _, category in ipairs(LOCAL_CATEGORIES) do
+    table.insert(CATEGORIES, category)
+    addCategory(category)
+  end
+end
+
+GET_COINS_URL = "https://www.google.com"
+
+function openGetCoins()
+  g_platform.openUrl(GET_COINS_URL)
 end
 
 function createTransferWindow()
@@ -280,8 +329,11 @@ end
 
 function onCoinBalance(coins, transferableCoins)
   if not shop or otcv8shop then return end
-  shop.infoPanel.points:setText(tr("Points:") .. " " .. coins)
-  transferWindow.coinsBalance:setText(tr('Transferable Tibia Coins: ') .. coins)
+  -- OTCv8 runs on Lua 5.1 where every number is a double, so concatenating
+  -- the coin value via ".." gives "1000.0". Format as integer instead.
+  local coinsStr = string.format("%d", coins)
+  shop.infoPanel.points:setText(tr("Points:") .. " " .. coinsStr)
+  transferWindow.coinsBalance:setText(tr('Transferable Tibia Coins: ') .. coinsStr)
   transferWindow.coinsAmount:setMaximum(coins)
   shop.infoPanel.buy:hide()
   shop.infoPanel:setHeight(20)
@@ -355,6 +407,9 @@ function processCategories(data)
   for i, category in ipairs(data) do
     addCategory(category)
   end
+  -- keep the local Premium Time tab even after a server pushes its
+  -- own category list
+  addLocalCategories()
   if not browsingHistory then
     local firstCategory = shop.categories:getChildByIndex(1)
     if firstCategory then

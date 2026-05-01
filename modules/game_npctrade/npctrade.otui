@@ -222,16 +222,20 @@ MainWindow
       anchors.right: parent.right
       margin-left: 5
       margin-top: 3
+      visible: false
+      height: 0
       @onCheckChange: modules.game_npctrade.onBuyWithBackpackChange()
 
     CheckBox
       id: ignoreCapacity
       !text: tr('Ignore capacity')
-      anchors.top: prev.bottom
+      anchors.top: searchText.bottom
       anchors.left: parent.left
       anchors.right: parent.right
       margin-left: 5
       margin-top: 3
+      visible: false
+      height: 0
       @onCheckChange: modules.game_npctrade.onIgnoreCapacityChange()
 
     CheckBox

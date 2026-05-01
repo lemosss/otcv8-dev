@@ -25,6 +25,8 @@ OptionPanel
   OptionCheckBox
     id: enableLights
     !text: tr('Enable lights')
+    visible: false
+    height: 0
 
   OptionCheckBox
     id: fullscreen
@@ -79,6 +81,8 @@ OptionPanel
   Label
     id: ambientLightLabel
     margin-top: 6
+    visible: false
+    height: 0
     @onSetup: |
       local value = modules.client_options.getOption('ambientLight')
       self:setText(tr('Ambient light: %s%%', value))
@@ -88,6 +92,8 @@ OptionPanel
     margin-top: 3
     minimum: 0
     maximum: 100
+    visible: false
+    height: 0
   
   Label
     id: tips

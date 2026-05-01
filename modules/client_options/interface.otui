@@ -3,14 +3,18 @@ OptionPanel
     width: 130
     id: layoutLabel
     !text: tr("Layout (change requries client restart)")
+    visible: false
+    height: 0
     $mobile:
       visible: false
-  
+
   ComboBox
     id: layout
     margin-top: 3
     margin-right: 2
     margin-left: 2
+    visible: false
+    height: 0
     $mobile:
       visible: false
     @onOptionChange: modules.client_options.setOption(self:getId(), self:getCurrentOption().text)
@@ -26,13 +30,17 @@ OptionPanel
     id: classicView
     !text: tr('Classic view')
     margin-top: 5
-    
+    visible: false
+    height: 0
+
     $mobile:
       visible: false
 
   OptionCheckBox
     id: cacheMap
     !text: tr('Cache map (for non-classic view)')
+    visible: false
+    height: 0
 
     $mobile:
       visible: false
@@ -161,6 +169,8 @@ OptionPanel
   Label
     id: floorFadingLabel
     margin-top: 6
+    visible: false
+    height: 0
     @onSetup: |
       local value = modules.client_options.getOption('floorFading')
       self:setText(tr('Floor fading: %s ms', value))
@@ -170,8 +180,12 @@ OptionPanel
     margin-top: 3
     minimum: 0
     maximum: 2000
+    visible: false
+    height: 0
 
   Label
     id: floorFadingLabel2
     margin-top: 6
+    visible: false
+    height: 0
     !text: (tr('Floor fading doesn\'t work with enabled light'))

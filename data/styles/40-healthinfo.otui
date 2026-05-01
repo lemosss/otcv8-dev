@@ -57,6 +57,7 @@ HealthOverlay < UIWidget
     anchors.left: parent.left
     anchors.right: parent.horizontalCenter
     phantom: true
+    visible: false
 
   ManaBar
     id: topManaBar
@@ -64,6 +65,7 @@ HealthOverlay < UIWidget
     anchors.right: parent.right
     anchors.left: parent.horizontalCenter
     phantom: true
+    visible: false
     
   UIProgressBar
     id: healthCircle

@@ -9,6 +9,7 @@ GameButtonsWindow < HeadlessMiniWindow
     Panel
       id: buttons
       anchors.fill: parent
+      margin-left: 6
       layout:
         type: grid
         cell-spacing: 3

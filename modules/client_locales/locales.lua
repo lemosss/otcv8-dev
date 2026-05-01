@@ -45,13 +45,11 @@ function init()
 
   installLocales('/locales')
 
-  local userLocaleName = g_settings.get('locale', 'false')
-  if userLocaleName ~= 'false' and setLocale(userLocaleName) then
-    pdebug('Using configured locale: ' .. userLocaleName)
-  else
-    setLocale(defaultLocaleName)
-    --connect(g_app, { onRun = createWindow })
-  end
+  -- force English regardless of any saved locale; the language picker
+  -- (Options > Game > Change language) has been removed and we don't
+  -- want pre-existing config.otml entries (e.g. locale: pt) to leak in.
+  setLocale(defaultLocaleName)
+  g_settings.set('locale', defaultLocaleName)
 end
 
 function terminate()

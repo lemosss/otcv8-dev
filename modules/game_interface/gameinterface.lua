@@ -552,13 +552,27 @@ function createThingMenu(menuPosition, lookThing, useThing, creatureThing)
   end
 
   -- hooked menu options
-  for _,category in pairs(hookedMenuOptions) do
-    if not isMenuHookCategoryEmpty(category) then
-      menu:addSeparator()
-      for name,opt in pairs(category) do
-        if opt and opt.condition(menuPosition, lookThing, useThing, creatureThing) then
-          menu:addOption(name, function() opt.callback(menuPosition, 
-            lookThing, useThing, creatureThing) end, opt.shortcut)
+  do
+    local sortedKeys = {}
+    for k in pairs(hookedMenuOptions) do sortedKeys[#sortedKeys + 1] = k end
+    table.sort(sortedKeys)
+    for _, k in ipairs(sortedKeys) do
+      local category = hookedMenuOptions[k]
+      if not isMenuHookCategoryEmpty(category) then
+        -- Only add the separator if at least one option's condition matches.
+        -- (Otherwise empty categories produce visible empty separators.)
+        local visible = {}
+        for name,opt in pairs(category) do
+          if opt and opt.condition(menuPosition, lookThing, useThing, creatureThing) then
+            visible[#visible + 1] = { name = name, opt = opt }
+          end
+        end
+        if #visible > 0 then
+          menu:addSeparator()
+          for _, v in ipairs(visible) do
+            menu:addOption(v.name, function() v.opt.callback(menuPosition,
+              lookThing, useThing, creatureThing) end, v.opt.shortcut)
+          end
         end
       end
     end
@@ -579,6 +593,42 @@ end
 
 function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, useThing, creatureThing, attackCreature, marking)
   local keyboardModifiers = g_keyboard.getModifiers()
+
+  -- PlayerShop quick-open: left-click numa creature vendendo abre a loja
+  -- direto, sem precisar do menu "Open Shop". Soh dispara sem modifier
+  -- (Shift/Ctrl/Alt continuam fazendo look/use/attack como sempre).
+  -- Limita a 3 SQM de distancia (Chebyshev): so pode abrir loja de
+  -- vendedor que esteja perto.
+  if mouseButton == MouseLeftButton and keyboardModifiers == KeyboardNoModifier
+      and creatureThing and creatureThing:isPlayer() then
+    local lp = g_game.getLocalPlayer()
+    local isSelling = creatureThing.getSkull and creatureThing:getSkull() == 7
+    -- Fallback: cache local de quem ja recebeu STATE_BROADCAST.
+    if not isSelling and modules.game_playershop
+        and modules.game_playershop.sellingCreatures then
+      isSelling = modules.game_playershop.sellingCreatures[creatureThing:getId()] ~= nil
+    end
+    if isSelling and lp and creatureThing:getId() ~= lp:getId() then
+      local lpPos = lp:getPosition()
+      local cpPos = creatureThing:getPosition()
+      local dist = -1
+      if lpPos and cpPos and lpPos.z == cpPos.z then
+        dist = math.max(math.abs(lpPos.x - cpPos.x), math.abs(lpPos.y - cpPos.y))
+      end
+      if dist >= 0 and dist <= 1 then
+        if modules.game_playershop and modules.game_playershop.requestShopFromCreature then
+          modules.game_playershop.requestShopFromCreature(creatureThing)
+          return true
+        end
+      else
+        if modules.game_textmessage then
+          modules.game_textmessage.displayBroadcastMessage(
+            "Voce esta longe demais. Aproxime-se do vendedor.")
+        end
+        return true
+      end
+    end
+  end
 
   if g_app.isMobile() then
     if mouseButton == MouseRightButton then
@@ -721,6 +771,10 @@ function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, u
     local autoWalkTile = g_map.getTile(autoWalkPos)
     if autoWalkTile and not autoWalkTile:isWalkable(true) then
       modules.game_textmessage.displayFailureMessage(tr('Sorry, not possible.'))
+      return false
+    end
+    -- Player Shop: block click-to-walk while own shop is open.
+    if modules.game_playershop and modules.game_playershop.iAmSelling then
       return false
     end
     player:autoWalk(autoWalkPos)

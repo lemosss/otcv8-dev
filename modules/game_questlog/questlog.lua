@@ -18,7 +18,11 @@ function init()
   
   if not g_app.isMobile() then
     questLogButton = modules.client_topmenu.addLeftGameButton('questLogButton', tr('Quest Log'), '/images/topbuttons/questlog', function() g_game.requestQuestLog() end, false, 8)
-    questTrackerButton = modules.client_topmenu.addLeftGameButton('questTrackerButton', tr('Quest Tracker'), '/images/topbuttons/quest_tracker', toggle, false, 9)
+    -- Quest Tracker sits on the right-side game button panel just before
+    -- the Shop button. game_questlog is loaded alphabetically before
+    -- game_shop, so appending here puts the Tracker icon at the leftmost
+    -- spot of the right panel relative to whatever comes after.
+    questTrackerButton = modules.client_topmenu.addRightGameToggleButton('questTrackerButton', tr('Quest Tracker'), '/images/topbuttons/quest_tracker', toggle, false, 98)
   end
   
   connect(g_game, { onQuestLog = onGameQuestLog,
