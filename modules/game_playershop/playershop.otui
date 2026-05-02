@@ -240,7 +240,7 @@ CreateShopWindow < MainWindow
     id: goldBox
     anchors.left: parent.left
     anchors.verticalCenter: closeBtn.verticalCenter
-    size: 100 20
+    size: 140 20
     image-source: /images/ui/panel_flat
     image-border: 1
 
@@ -257,11 +257,15 @@ CreateShopWindow < MainWindow
 
     Label
       id: goldLbl
+      anchors.left: parent.left
       anchors.right: goldIcon.left
       anchors.verticalCenter: parent.verticalCenter
+      margin-left: 6
+      margin-right: 4
       text: 0
       color: #FFD700
       font: verdana-11px-rounded
+      text-align: right
 
   Button
     id: startBtn
