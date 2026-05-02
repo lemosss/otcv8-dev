@@ -371,14 +371,18 @@ end
 -- Init / Terminate
 -- ----------------------------------------------------------------------------
 function init()
-    -- Schedule menu hooks AFTER all modules definitely loaded.
-    scheduleEvent(function()
-        local gi2 = modules and modules.game_interface
-        if not gi2 or not gi2.addMenuHook then return end
-
-        -- Two categories. Each category that's "non-empty" adds a separator.
-        -- Result: when right-clicking own char OR a selling other, the menu
-        -- shows TWO separator lines (one per category) plus the Open Shop entry.
+    -- Register the Open Shop menu hooks. Done synchronously in init() (not
+    -- via scheduleEvent) so the option is available the instant Ctrl+R
+    -- finishes reloading the module -- no 1.5s lag where every other menu
+    -- entry is there but Open Shop is missing.
+    --
+    -- Two hooks because the entry behaves differently for own char vs other:
+    --   _a_create -> own char, opens CreateShop or owner-view
+    --   _b_view   -> other player who has a shop open, opens buyer-view
+    -- Each hook is in its own category so a separator naturally appears
+    -- between this entry and the rest of the engine's menu items.
+    local gi2 = modules and modules.game_interface
+    if gi2 and gi2.addMenuHook then
         gi2.addMenuHook(
             'playershop_a_create',
             'Open Shop',
@@ -423,7 +427,7 @@ function init()
                 return sellingCreatures[creature:getId()] ~= nil
             end
         )
-    end, 1500)
+    end
 
     -- All optional setup wrapped in pcalls so nothing breaks the hook.
     pcall(function() g_ui.importStyle('playershop.otui') end)

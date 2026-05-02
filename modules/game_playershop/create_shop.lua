@@ -684,6 +684,29 @@ function requestHistoryPage(page)
     end
 end
 
+-- Default window size (matches OTUI). History mode expands horizontally so
+-- big price values (e.g. 480.000) and long item descriptions don't crowd
+-- the columns. Description column is flex-anchored so it naturally absorbs
+-- the extra width.
+local CREATE_WIN_WIDTH_ITEMS   = 460
+local CREATE_WIN_WIDTH_HISTORY = 620
+
+local function resizeAndRecenter(width)
+    if not createWindow then return end
+    local height = createWindow:getHeight()
+    createWindow:setWidth(width)
+    -- Re-center horizontally on screen so the window doesn't expand off
+    -- the right edge when the user is parked to the right side. Y is
+    -- preserved (only horizontal grow).
+    local screen = g_window.getSize()
+    if screen and screen.width and screen.width > 0 then
+        local cur = createWindow:getPosition()
+        local newX = math.floor((screen.width - width) / 2)
+        if newX < 0 then newX = 0 end
+        createWindow:setPosition({ x = newX, y = (cur and cur.y) or 80 })
+    end
+end
+
 function enterHistoryMode()
     if not createWindow then return end
     historyMode = true
@@ -694,6 +717,7 @@ function enterHistoryMode()
     local ib = createWindow:recursiveGetChildById('itemsBtn')
     if hb then hb:setVisible(false) end
     if ib then ib:setVisible(true) end
+    resizeAndRecenter(CREATE_WIN_WIDTH_HISTORY)
     requestHistoryPage(1)
 end
 
@@ -707,6 +731,7 @@ function enterItemsMode()
     local ib = createWindow:recursiveGetChildById('itemsBtn')
     if hb then hb:setVisible(true) end
     if ib then ib:setVisible(false) end
+    resizeAndRecenter(CREATE_WIN_WIDTH_ITEMS)
 end
 
 -- ----------------------------------------------------------------------------

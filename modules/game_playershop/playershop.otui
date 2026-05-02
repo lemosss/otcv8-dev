@@ -419,7 +419,7 @@ CreateShopWindow < MainWindow
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
         margin-left: 8
-        width: 90
+        width: 100
         text: Date
         color: #ffffff
         font: verdana-11px-rounded
@@ -428,7 +428,7 @@ CreateShopWindow < MainWindow
         id: histColBuyer
         anchors.left: histColDate.right
         anchors.verticalCenter: parent.verticalCenter
-        width: 110
+        width: 140
         text: Buyer
         color: #ffffff
         font: verdana-11px-rounded
@@ -447,7 +447,7 @@ CreateShopWindow < MainWindow
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         margin-right: 18
-        width: 70
+        width: 100
         text: Price
         color: #ffffff
         font: verdana-11px-rounded
@@ -527,6 +527,27 @@ CreateShopWindow < MainWindow
       anchors.right: parent.right
       anchors.bottom: histFooter.top
 
+    VerticalSeparator
+      id: histColSep1
+      anchors.top: histHeader.top
+      anchors.bottom: histFooterSep.top
+      anchors.left: parent.left
+      margin-left: 102
+
+    VerticalSeparator
+      id: histColSep2
+      anchors.top: histHeader.top
+      anchors.bottom: histFooterSep.top
+      anchors.left: parent.left
+      margin-left: 242
+
+    VerticalSeparator
+      id: histColSep3
+      anchors.top: histHeader.top
+      anchors.bottom: histFooterSep.top
+      anchors.right: parent.right
+      margin-right: 124
+
     VerticalScrollBar
       id: histScrollBar
       anchors.top: histHeaderSep.bottom
@@ -561,7 +582,7 @@ HistoryRow < UIWidget
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
     margin-left: 6
-    width: 90
+    width: 100
     color: #cccccc
     font: verdana-11px-rounded
 
@@ -569,7 +590,7 @@ HistoryRow < UIWidget
     id: rowBuyer
     anchors.left: rowDate.right
     anchors.verticalCenter: parent.verticalCenter
-    width: 110
+    width: 140
     color: #ffffff
     font: verdana-11px-rounded
 
@@ -586,7 +607,7 @@ HistoryRow < UIWidget
     anchors.right: parent.right
     anchors.verticalCenter: parent.verticalCenter
     margin-right: 18
-    width: 70
+    width: 100
     color: #FFD700
     font: verdana-11px-rounded
     text-align: right
