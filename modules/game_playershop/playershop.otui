@@ -52,7 +52,7 @@ PickerWindow < MainWindow
     anchors.right: parent.right
     margin-top: 10
     margin-bottom: 6
-    width: 12
+    margin-right: 3
     step: 56
     pixels-scroll: true
 
@@ -106,7 +106,7 @@ QtyWindow < MainWindow
     anchors.top: parent.top
     anchors.left: parent.left
     margin-top: 4
-    text: Quantidade:
+    text: Quantity:
 
   TextEdit
     id: qtyEdit
@@ -206,6 +206,7 @@ CreateShopWindow < MainWindow
     anchors.right: parent.right
     anchors.top: parent.top
     margin-top: 2
+    margin-right: 3
     size: 22 22
     text: x
     color: #ff6666
@@ -345,6 +346,7 @@ CreateShopWindow < MainWindow
     anchors.right: parent.right
     margin-top: 8
     margin-bottom: 8
+    margin-right: 3
     step: 38
     pixels-scroll: true
 
@@ -415,6 +417,7 @@ ShopViewWindow < MainWindow
     anchors.right: parent.right
     anchors.top: parent.top
     margin-top: 2
+    margin-right: 3
     size: 22 22
     text: x
     color: #ff6666
@@ -495,6 +498,8 @@ ShopViewWindow < MainWindow
       anchors.top: priceLbl.bottom
       margin-top: 8
       width: 160
+      step: 1
+      pixels-scroll: true
 
     Label
       id: amountLbl
@@ -557,6 +562,7 @@ ShopViewWindow < MainWindow
     anchors.right: parent.right
     margin-top: 8
     margin-bottom: 8
+    margin-right: 3
     step: 38
     pixels-scroll: true
 

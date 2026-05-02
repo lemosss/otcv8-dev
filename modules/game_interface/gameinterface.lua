@@ -624,8 +624,8 @@ function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, u
         end
       else
         if modules.game_textmessage then
-          modules.game_textmessage.displayBroadcastMessage(
-            "Voce esta longe demais. Aproxime-se do vendedor.")
+          modules.game_textmessage.displayStatusMessage(
+            "You are too far away. Get closer to the seller.")
         end
         return true
       end

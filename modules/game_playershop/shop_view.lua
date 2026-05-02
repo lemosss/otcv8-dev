@@ -115,8 +115,8 @@ local function applySearchFilter()
     if emptyHint then
         emptyHint:setVisible(visible == 0)
         emptyHint:setText(needle ~= ''
-            and '(nenhum item bate com a busca)'
-            or '(esta loja nao tem itens)')
+            and '(no items match the search)'
+            or '(this shop has no items)')
     end
 end
 
@@ -126,7 +126,7 @@ local function buildBuyerCell(entry)
     local cellItem = cell:getChildById('cellItem')
     cellItem:setItemId(entry.itemId)
     cellItem:setItemCount(entry.count)
-    cell:setTooltip(('%dx %s\n%d g cada'):format(entry.count, entry.name or '', entry.price or 0))
+    cell:setTooltip(('%dx %s\n%d g each'):format(entry.count, entry.name or '', entry.price or 0))
     cell.entry = entry
 
     cell.onClick = function(self) selectCell(self) end
@@ -189,7 +189,7 @@ function shop_view_handle(buffer)
     if ownerMode then
         viewWindow:setText(("%s's Shop"):format(sellerName))
         viewWindow:recursiveGetChildById('sellerLine'):setText(
-            ('Sua loja: ' .. (shopText or '')))
+            ('Your shop: ' .. (shopText or '')))
     else
         viewWindow:setText(("%s's Shop"):format(sellerName))
         viewWindow:recursiveGetChildById('sellerLine'):setText(shopText or '')
