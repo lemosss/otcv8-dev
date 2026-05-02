@@ -373,7 +373,26 @@ function walk(dir, ticks)
   removeEvent(autoWalkEvent)
   autoWalkEvent = nil
   local preWalked = false
-  if toTile and toTile:isWalkable() then
+  -- Treat tiles that contain a player whose shop is currently active as
+  -- walkable from the client's perspective. The C++ server (Player::
+  -- canWalkthrough) already lets the actual move go through; without this
+  -- mirror on the client, WASD/arrow walks die in the early-return below
+  -- because Tile:isWalkable() returns false when there's any creature
+  -- on the destination. Click-to-walk uses a different path and isn't
+  -- affected.
+  local destHasShopSeller = false
+  if toTile then
+    local shopMod = modules.game_playershop
+    if shopMod and shopMod.sellingCreatures then
+      for _, c in ipairs(toTile:getCreatures() or {}) do
+        if shopMod.sellingCreatures[c:getId()] then
+          destHasShopSeller = true
+          break
+        end
+      end
+    end
+  end
+  if toTile and (toTile:isWalkable() or destHasShopSeller) then
     if not player:isServerWalking() and not ignoredCanWalk then
       player:preWalk(dir)
       preWalked = true
@@ -388,7 +407,7 @@ function walk(dir, ticks)
     elseif not toTile then
       player:lockWalk(100) -- bug fix for missing stairs down on map
     else
-      if g_app.isMobile() and dir <= Directions.West then 
+      if g_app.isMobile() and dir <= Directions.West then
         turn(dir, ticks > 0)
       end
       return -- not walkable tile
