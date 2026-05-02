@@ -1,28 +1,36 @@
 -- =============================================================================
--- Create-Shop window: lets the seller pick items and prices, then dispatches
--- OPCODE_SHOP_OPEN to the server.
+-- Create-Shop window: lets the seller pick items + prices from a grid layout
+-- (mirrors the buyer view structure), then dispatches OPCODE_SHOP_OPEN to the
+-- server.
 -- =============================================================================
 
 createWindow = nil
 inventoryList = {}      -- snapshot received from server
-slots = {}              -- [slotIndex] = { entryUid, entryId, count, charges, price, widget }
+slots = {}              -- [slotIndex] = { entryUid, entryId, serverId, count, charges, price, stackable, widget }
 
 local MAX_SLOTS = 20
+local selectedSlotIndex = nil
+-- Set true by openCreateShop when there's a cached `lastSavedSlots` from a
+-- previous attempt (e.g. server rejected the OPEN with "Invalid price ..."):
+-- once the inventory list arrives we walk the cache and re-fill the grid so
+-- the seller doesn't have to redo all picks/prices from scratch.
+local pendingRestoreDraft = false
 
 -- ----------------------------------------------------------------------------
-local function clearSlots()
-    if not createWindow then return end
-    local panel = createWindow:recursiveGetChildById('slotsPanel')
-    panel:destroyChildren()
-    slots = {}
+-- Slot grid (replaces the old vertical list of ShopSlot rows).
+-- ----------------------------------------------------------------------------
+
+local function isFilled(s)
+    return s and s.entryId ~= nil
 end
 
 local function refreshSummary()
     if not createWindow then return end
     local lbl = createWindow:recursiveGetChildById('summaryLbl')
+    if not lbl then return end
     local total, count = 0, 0
     for _, s in pairs(slots) do
-        if s.entryId then
+        if isFilled(s) then
             count = count + 1
             total = total + (s.price or 0) * (s.count or 1)
         end
@@ -30,73 +38,282 @@ local function refreshSummary()
     lbl:setText(('%d items, total: %d gold'):format(count, total))
 end
 
--- "Add slot" pseudo-row with a + button. Always rendered last in the panel.
-local addRowWidget = nil
-local function rebuildAddRow()
+local function refreshInfoPanel()
     if not createWindow then return end
-    if addRowWidget then addRowWidget:destroy(); addRowWidget = nil end
+    local nameLbl    = createWindow:recursiveGetChildById('slotName')
+    local priceEdit  = createWindow:recursiveGetChildById('slotPriceEdit')
+    local amountLbl  = createWindow:recursiveGetChildById('slotAmountLbl')
+    local removeBtn  = createWindow:recursiveGetChildById('slotRemoveBtn')
+    local previewItem= createWindow:recursiveGetChildById('previewItem')
+    local descText   = createWindow:recursiveGetChildById('descText')
+
+    local s = selectedSlotIndex and slots[selectedSlotIndex] or nil
+    if not isFilled(s) then
+        nameLbl:setText('None selected')
+        priceEdit:setText('')
+        priceEdit:setEnabled(false)
+        amountLbl:setText('Amount: -')
+        removeBtn:setEnabled(false)
+        previewItem:setItemId(0)
+        descText:setText('-')
+        return
+    end
+
+    nameLbl:setText(s.name or 'item')
+    priceEdit:setEnabled(true)
+    priceEdit:setText(tostring(s.price or 0))
+    amountLbl:setText(('Amount: %dx'):format(s.count or 1))
+    removeBtn:setEnabled(true)
+    previewItem:setItemId(s.entryId)
+    previewItem:setItemCount(s.count or 1)
+    descText:setText(('You see %s.\nQty in shop: %d.'):format(
+        s.name or 'this item', s.count or 1))
+end
+
+-- Walk every cell and reset border to 0; paint the chosen one with white.
+local function highlightSlotCell(cell)
+    if not createWindow then return end
     local panel = createWindow:recursiveGetChildById('slotsPanel')
-    local count = 0
-    for _ in pairs(slots) do count = count + 1 end
-    if count >= MAX_SLOTS then return end
-    addRowWidget = g_ui.createWidget('Button', panel)
-    addRowWidget:setText('+ add item')
-    addRowWidget:setHeight(28)
-    addRowWidget.onClick = function()
-        local nextIdx = count + 1
-        for i = 1, MAX_SLOTS do
-            if not slots[i] then nextIdx = i; break end
-        end
-        addSlot(nextIdx)
+    if not panel then return end
+    for _, sib in ipairs(panel:getChildren()) do sib:setBorderWidth(0) end
+    if cell then
+        cell:setBorderColor('#ffffff')
+        cell:setBorderWidth(2)
     end
 end
 
-local function buildSlotWidget(index)
+local function selectSlot(index)
+    selectedSlotIndex = index
+    local s = slots[index]
+    highlightSlotCell(s and s.widget or nil)
+    refreshInfoPanel()
+end
+
+local function setCellEmpty(cell)
+    cell.cellItem:setItemId(0)
+    cell.cellPlus:setVisible(true)
+end
+
+local function setCellFilled(cell, entryId, count)
+    cell.cellItem:setItemId(entryId)
+    cell.cellItem:setItemCount(count)
+    cell.cellPlus:setVisible(false)
+end
+
+local function buildSlotCell(index)
     local panel = createWindow:recursiveGetChildById('slotsPanel')
-    local row = g_ui.createWidget('ShopSlot', panel)
-    row.itemSlot   = row:getChildById('itemSlot')
-    row.itemName   = row:getChildById('itemName')
-    row.priceField = row:getChildById('priceField')
-    row.removeBtn  = row:getChildById('removeBtn')
-    row.itemName:setText('Slot ' .. index .. ' - click to choose')
+    local cell = g_ui.createWidget('ShopSellerCell', panel)
+    cell.cellItem = cell:getChildById('cellItem')
+    cell.cellPlus = cell:getChildById('cellPlus')
+    cell.slotIndex = index
+    setCellEmpty(cell)
 
-    row.itemSlot.onClick = function() openItemPicker(index) end
-
-    row.priceField.onTextChange = function(self, text)
-        local v = tonumber(text) or 0
-        if v < 1 or v > 1000000000 then
-            self:setColor('red')
+    cell.onClick = function(self)
+        local s = slots[index]
+        if isFilled(s) then
+            selectSlot(index)
         else
-            self:setColor('white')
+            -- Empty: open the picker which will eventually call assignItemDirect.
+            selectedSlotIndex = index
+            highlightSlotCell(self)
+            openItemPicker(index)
         end
-        slots[index].price = v
-        refreshSummary()
     end
+    cell.onDoubleClick = cell.onClick
 
-    row.removeBtn.onClick = function() removeSlot(index) end
-
-    slots[index] = { widget = row }
-    return row
+    slots[index] = { widget = cell }
+    return cell
 end
 
--- Add a slot at index (or the first available). Re-renders the add-button.
-function addSlot(index)
+local function clearAllSlots()
     if not createWindow then return end
-    buildSlotWidget(index)
-    rebuildAddRow()
-    refreshSummary()
+    local panel = createWindow:recursiveGetChildById('slotsPanel')
+    if panel then panel:destroyChildren() end
+    slots = {}
+    selectedSlotIndex = nil
 end
 
--- Initial state: a single empty slot + the add-row button.
+-- Counts cells currently in the grid (filled + empty placeholders).
+local function totalSlots()
+    local n = 0
+    for _ in pairs(slots) do n = n + 1 end
+    return n
+end
+
+-- Returns the highest slot index in use.
+local function maxIndex()
+    local hi = 0
+    for i in pairs(slots) do if i > hi then hi = i end end
+    return hi
+end
+
+-- Ensure exactly one trailing empty `+` cell exists at the end (unless we're
+-- at MAX_SLOTS already). Called after every fill / remove so the user always
+-- has a `+` cell to click to add a new item, and never sees more empty slots
+-- than they need.
+local function ensureTrailingPlus()
+    if not createWindow then return end
+    -- Find an existing empty slot
+    local empties = {}
+    for i, s in pairs(slots) do
+        if not isFilled(s) then empties[#empties + 1] = i end
+    end
+    if #empties == 0 then
+        -- No empty cell -> add one at the end (if room)
+        if totalSlots() < MAX_SLOTS then
+            buildSlotCell(maxIndex() + 1)
+        end
+    elseif #empties > 1 then
+        -- More than one empty -> keep the highest, remove the rest
+        table.sort(empties)
+        for i = 1, #empties - 1 do
+            local s = slots[empties[i]]
+            if s and s.widget then s.widget:destroy() end
+            slots[empties[i]] = nil
+        end
+    end
+end
+
 function buildEmptySlots()
-    clearSlots()
-    buildSlotWidget(1)
-    rebuildAddRow()
+    clearAllSlots()
+    buildSlotCell(1)  -- start with one `+` cell
     refreshSummary()
+    refreshInfoPanel()
 end
 
 -- ----------------------------------------------------------------------------
--- Item picker: popup with a list of items the player has in their DEPOT,
+-- Restore the previously-attempted shop draft after the inventory list
+-- arrives. Triggered when the server rejected the OPEN payload (invalid
+-- price, etc.) or simply when the player reopens Create Shop and we still
+-- have `lastSavedSlots` cached from the last commit.
+--
+-- Matching strategy:
+--   - non-stackable items: by entryUid (each depot instance is unique)
+--   - stackable items: by serverId, clamped to whatever's actually still in
+--     the depot now (counts may have shrunk if part of the stack was sold
+--     before the previous shop closed).
+--
+-- Slots that no longer match anything are silently skipped instead of
+-- producing phantom cells.
+-- ----------------------------------------------------------------------------
+local function restoreDraftSlots()
+    if not pendingRestoreDraft then return end
+    pendingRestoreDraft = false  -- one-shot: don't re-fire on later inv lists
+    if not lastSavedSlots then return end
+    if not createWindow then return end
+    if not inventoryList or #inventoryList == 0 then return end
+
+    -- Index the depot inventory for fast lookup.
+    local byUid, byServerId = {}, {}
+    for _, e in ipairs(inventoryList) do
+        if e.stackable then
+            byServerId[e.serverId] = e
+        else
+            byUid[e.uid] = e
+        end
+    end
+
+    -- Walk the saved cache in stable slot order so the restored grid keeps
+    -- the same visual layout the user had before.
+    local indices = {}
+    for i in pairs(lastSavedSlots) do indices[#indices + 1] = i end
+    table.sort(indices)
+
+    local consumedStack = {}   -- serverId -> already-allocated stackable count
+    local consumedUid   = {}   -- uid -> true (non-stackable already taken)
+
+    for _, savedIdx in ipairs(indices) do
+        local saved = lastSavedSlots[savedIdx]
+        if saved then
+            local match
+            local count = saved.count or 1
+            if saved.uid and saved.uid ~= 0 and byUid[saved.uid] and not consumedUid[saved.uid] then
+                match = byUid[saved.uid]
+                consumedUid[saved.uid] = true
+                count = 1  -- non-stackable instances are always 1
+            elseif saved.serverId and saved.serverId ~= 0 then
+                local invEntry = byServerId[saved.serverId]
+                if invEntry then
+                    local already = consumedStack[saved.serverId] or 0
+                    local available = (invEntry.count or 1) - already
+                    if available > 0 then
+                        match = invEntry
+                        if count > available then count = available end
+                        consumedStack[saved.serverId] = already + count
+                    end
+                end
+            end
+            if match and count > 0 then
+                -- Find the lowest empty slot index in the current grid.
+                local targetIdx
+                for i, s in pairs(slots) do
+                    if not isFilled(s) then
+                        if not targetIdx or i < targetIdx then targetIdx = i end
+                    end
+                end
+                if targetIdx then
+                    assignItemDirect(targetIdx, {
+                        uid = match.uid,
+                        id = match.id,
+                        serverId = match.serverId,
+                        charges = match.charges,
+                        name = match.name,
+                        stackable = match.stackable,
+                    }, count)
+                    -- assignItemDirect set price to 0 (placeholder default);
+                    -- write the cached price back so the seller doesn't have
+                    -- to re-type it.
+                    local s = slots[targetIdx]
+                    if s then s.price = saved.price or 0 end
+                end
+            end
+        end
+    end
+
+    refreshSummary()
+    refreshInfoPanel()
+end
+
+-- ----------------------------------------------------------------------------
+-- Item assignment (called by the picker after the user picks an item).
+-- ----------------------------------------------------------------------------
+
+function assignItemDirect(index, entry, count)
+    local s = slots[index]
+    if not s or not s.widget then return end
+    s.entryUid = entry.uid or 0
+    s.stackable = entry.stackable and true or false
+    s.entryId  = entry.id            -- clientId (display)
+    s.serverId = entry.serverId or 0 -- echoed back to server on OPEN
+    s.count    = count
+    s.charges  = entry.charges or 0
+    s.name     = entry.name
+    s.price    = s.price or 0
+    setCellFilled(s.widget, entry.id, count)
+    selectSlot(index)
+    -- That cell just stopped being empty -> add a fresh `+` cell at the end.
+    ensureTrailingPlus()
+    refreshSummary()
+end
+
+function removeSlot(index)
+    local s = slots[index]
+    if not s or not s.widget then return end
+    -- Destroy the widget entirely instead of toggling it to empty -- we
+    -- keep exactly ONE trailing `+` placeholder via ensureTrailingPlus().
+    s.widget:destroy()
+    slots[index] = nil
+    if selectedSlotIndex == index then selectedSlotIndex = nil end
+    highlightSlotCell(nil)
+    -- Make sure there's still a `+` cell to click for new items.
+    if totalSlots() == 0 then buildSlotCell(1) end
+    ensureTrailingPlus()
+    refreshSummary()
+    refreshInfoPanel()
+end
+
+-- ----------------------------------------------------------------------------
+-- Item picker: popup with a grid of items the player has in their DEPOT,
 -- aggregated by itemId. User clicks an item, optionally enters quantity for
 -- stackables, then it's assigned to the requested slot.
 -- ----------------------------------------------------------------------------
@@ -111,7 +328,6 @@ local function destroyPickerWindow()
     pickerSearchText = ''
 end
 
--- Truncate a name with ellipsis so it fits in the cell footer.
 local function truncate(text, maxLen)
     if not text then return '' end
     if #text <= maxLen then return text end
@@ -122,12 +338,6 @@ function openItemPicker(slotIndex)
     destroyPickerWindow()
     pendingSlotIndex = slotIndex
 
-    -- IMPORTANT: o server regenera os uids virtuais a cada chamada de
-    -- SendInventoryList (eh um indice incremental local). Se a gente
-    -- pedisse a lista de novo aqui, os entryUid ja salvos em outros slots
-    -- ficariam orfaos e o filtro de "ja-alocado" nao reconheceria mais.
-    -- Por isso so pedimos UMA vez (no openCreateShop). Re-pedir so ao
-    -- reabrir o create-shop, que limpa tudo.
     if not inventoryList or #inventoryList == 0 then
         if modules.game_playershop and modules.game_playershop.sendOpcode then
             modules.game_playershop.sendOpcode(OPCODE_INVENTORY_LIST, '')
@@ -153,17 +363,10 @@ function openItemPicker(slotIndex)
         populatePickerList()
     end
 
-    -- ESC closes the picker (scoped to this window). Enter/Return foi
-    -- removido porque alguns builds do OTC nao reconhecem o nome 'Return'
-    -- e disparam erro Lua. Click + OK ou double-click funcionam normal.
     pcall(function()
         g_keyboard.bindKeyPress('Escape', destroyPickerWindow, pickerWindow)
     end)
 
-    -- Real-time: conecta no onGeometryChange do gridPanel pra repopular
-    -- automaticamente assim que o panel ganhar dimensoes validas. Se o
-    -- panel ja estiver layoutado, popula imediato. Wrap em pcall pra
-    -- nao quebrar o resto se a API mudou em alguma versao do OTC.
     pcall(function()
         local panel = pickerWindow:recursiveGetChildById('gridPanel')
         if not panel then return end
@@ -181,10 +384,6 @@ function openItemPicker(slotIndex)
 end
 
 local function highlightCell(cell)
-    -- Hard-reset every cell's border via direct widget API (not via the $on
-    -- style state, which proved sticky in this OTC build). Then apply white
-    -- 2px border to the chosen cell only. Brute-force iteration is cheap
-    -- (max ~50 cells) and guarantees only ONE cell shows the highlight.
     if pickerWindow then
         local panel = pickerWindow:recursiveGetChildById('gridPanel')
         if panel then
@@ -212,20 +411,18 @@ function populatePickerList()
     panel:destroyChildren()
     pickerSelected = nil
 
-    -- Debug: dump do inventoryList recebido do server.
     do
         local okBtn = pickerWindow:recursiveGetChildById('pickOkBtn')
         if okBtn then okBtn:setEnabled(false) end
     end
 
-    -- Para STACKABLES: subtraimos o total ja alocado em outros slots por
-    -- itemId (porque eles compartilham o mesmo "estoque agregado").
-    -- Para NON-STACKABLES: cada entry eh uma instancia unica (uid distinto
-    -- vindo do server), entao escondemos pelo uid quando ja esta em uso.
+    -- For STACKABLES: subtract total already allocated across other slots
+    -- (they share the same aggregate stock). For NON-STACKABLES: each
+    -- inventory entry is a unique instance; hide it once allocated.
     local allocatedStackById = {}
     local allocatedNonStackUid = {}
     for idx, s in pairs(slots) do
-        if idx ~= pendingSlotIndex and s.entryId and s.count and s.count > 0 then
+        if idx ~= pendingSlotIndex and isFilled(s) and s.count and s.count > 0 then
             if s.stackable then
                 allocatedStackById[s.entryId] = (allocatedStackById[s.entryId] or 0) + s.count
             elseif s.entryUid and s.entryUid ~= 0 then
@@ -236,7 +433,6 @@ function populatePickerList()
 
     local matches = {}
     for _, e in ipairs(inventoryList or {}) do
-        -- Determinar se entry e visivel.
         local visible
         local effectiveCount = e.count or 1
         if e.stackable then
@@ -247,7 +443,6 @@ function populatePickerList()
             visible = not allocatedNonStackUid[e.uid]
         end
 
-        -- Aplicar filtro de busca (texto pode ser '', nil, ou termo).
         local matchSearch = true
         local q = pickerSearchText or ''
         if q ~= '' then
@@ -268,16 +463,15 @@ function populatePickerList()
 
     if #matches == 0 then
         if emptyHint then
-            emptyHint:setText(pickerSearchText ~= '' and '(no items match the search)' or '(your depot is empty)')
+            emptyHint:setText(pickerSearchText ~= ''
+                and '(no items match the search)'
+                or '(your depot is empty)')
             emptyHint:setVisible(true)
         end
         return
     end
     if emptyHint then emptyHint:setVisible(false) end
 
-    -- Cria cada cell envolvendo em pcall: se um item especifico tiver
-    -- atributo esquisito que crashe setItemId/setItemCount, os outros
-    -- ainda aparecem.
     for _, e in ipairs(matches) do
         local ok, err = pcall(function()
             local cell = g_ui.createWidget('PickerCell', panel)
@@ -290,9 +484,7 @@ function populatePickerList()
             cell:setTooltip(('%dx %s\n(id %d)'):format(e.count, e.name or '', e.id))
             cell.entry = e
 
-            cell.onClick = function(self)
-                highlightCell(self)
-            end
+            cell.onClick = function(self) highlightCell(self) end
             cell.onDoubleClick = function(self)
                 highlightCell(self)
                 promptCountAndAssign(pendingSlotIndex, e)
@@ -304,8 +496,6 @@ function populatePickerList()
         end
     end
 
-    -- Forca o grid layout a recalcular posicoes dos cells. Sem isso, os
-    -- cells as vezes ficam com pos {0,0,0,0} ate o user mexer na janela.
     if panel.updateLayout then panel:updateLayout() end
 end
 
@@ -314,7 +504,6 @@ end
 function promptCountAndAssign(slotIndex, entry)
     if not slotIndex or not entry then return end
     local available = entry.count or 1
-    -- Non-stackable: cada entry eh 1 instancia unica, sem prompt.
     if not entry.stackable or available <= 1 then
         assignItemDirect(slotIndex, entry, 1)
         destroyPickerWindow()
@@ -322,9 +511,7 @@ function promptCountAndAssign(slotIndex, entry)
     end
 
     -- Destroy the picker BEFORE creating the qty window so a stale OK click
-    -- queued by OTC (e.g. when the user double-clicks the cell, OTC fires
-    -- both cell.onDoubleClick AND the picker's default-button onClick on
-    -- the same gesture) can't reach an already-gone widget.
+    -- queued by OTC can't reach an already-gone widget.
     destroyPickerWindow()
 
     local qtyWindow = g_ui.createWidget('QtyWindow', rootWidget)
@@ -333,73 +520,51 @@ function promptCountAndAssign(slotIndex, entry)
     local edit = qtyWindow:recursiveGetChildById('qtyEdit')
     edit:setText(tostring(available))
     edit:focus()
-    -- Select the prefilled value so typing replaces it immediately.
     if edit.selectAll then edit:selectAll() end
 
+    -- ------------------------------------------------------------------
+    -- Make the qty dialog effectively modal: while it's alive, the user
+    -- cannot click the createWindow (or anything else) to bring it to
+    -- front. They MUST click OK / Cancel (or press Enter/Escape).
+    --
+    -- Implementation: a full-screen transparent overlay sits BELOW
+    -- qtyWindow but ABOVE every other window. Clicks outside qtyWindow's
+    -- bounds hit the overlay first; the overlay eats them via an
+    -- onMousePress that always returns true (consumed). Clicks INSIDE
+    -- qtyWindow's bounds hit qtyWindow normally because qtyWindow was
+    -- raised above the overlay.
+    -- ------------------------------------------------------------------
+    local overlay = g_ui.createWidget('UIWidget', rootWidget)
+    overlay:fill('parent')
+    overlay:setBackgroundColor('#00000000')  -- fully transparent
+    overlay:setFocusable(false)
+    overlay.onMousePress = function() return true end  -- swallow all clicks
+    qtyWindow:raise()
+    qtyWindow:focus()
+
+    local destroyed = false
+    local function closeQty()
+        if destroyed then return end
+        destroyed = true
+        if overlay then pcall(function() overlay:destroy() end); overlay = nil end
+        pcall(function() qtyWindow:destroy() end)
+    end
+
     local function commit()
+        if destroyed then return end
         local n = tonumber(edit:getText()) or available
         if n < 1 then n = 1 end
         if n > available then n = available end
         assignItemDirect(slotIndex, entry, n)
-        qtyWindow:destroy()
+        closeQty()
         destroyPickerWindow()
     end
 
     qtyWindow:recursiveGetChildById('qtyOkBtn').onClick = commit
-    qtyWindow:recursiveGetChildById('qtyCancelBtn').onClick = function()
-        qtyWindow:destroy()
-    end
-    -- Some OTCv8 builds don't expose the 'Return' key name and bindKeyPress
-    -- errors with `pairs(nil)` from corelib. pcall each so a missing alias
-    -- doesn't prevent the working ones (Escape always works).
+    qtyWindow:recursiveGetChildById('qtyCancelBtn').onClick = closeQty
     pcall(g_keyboard.bindKeyPress, 'Return', commit, qtyWindow)
     pcall(g_keyboard.bindKeyPress, 'Enter',  commit, qtyWindow)
-    pcall(g_keyboard.bindKeyPress, 'Escape', function() qtyWindow:destroy() end, qtyWindow)
-end
-
-function assignItemDirect(index, entry, count)
-    local s = slots[index]
-    if not s or not s.widget then return end
-    -- Pra non-stackables, salvamos o uid virtual da entry pra que o
-    -- filtro do picker (allocatedNonStackUid) saiba que esta instancia
-    -- ja foi alocada. Pra stackables, uid eh irrelevante.
-    s.entryUid = entry.uid or 0
-    s.stackable = entry.stackable and true or false
-    s.entryId  = entry.id            -- clientId (display)
-    s.serverId = entry.serverId or 0 -- echoed back to server on OPEN
-    s.count    = count
-    s.charges  = entry.charges or 0
-    s.widget.itemSlot:setItemId(entry.id)
-    s.widget.itemSlot:setItemCount(count)
-    s.widget.itemName:setText(('%dx %s'):format(count, entry.name or ('id ' .. entry.id)))
-    refreshSummary()
-end
-
-function assignItemToSlot(index, entry)
-    local s = slots[index]
-    if not s or not s.widget then return end
-    s.entryUid = entry.uid
-    s.entryId  = entry.id
-    s.serverId = entry.serverId or 0
-    s.count    = entry.count
-    s.charges  = entry.charges
-    s.widget.itemSlot:setItemId(entry.id)
-    s.widget.itemSlot:setItemCount(entry.count)
-    s.widget.itemName:setText(('%dx %s'):format(entry.count, entry.name))
-    refreshSummary()
-end
-
-function removeSlot(index)
-    local s = slots[index]
-    if not s or not s.widget then return end
-    s.widget:destroy()
-    slots[index] = nil
-    -- Always keep at least one empty slot in the window.
-    local count = 0
-    for _ in pairs(slots) do count = count + 1 end
-    if count == 0 then buildSlotWidget(1) end
-    rebuildAddRow()
-    refreshSummary()
+    pcall(g_keyboard.bindKeyPress, 'Escape', closeQty, qtyWindow)
 end
 
 -- ----------------------------------------------------------------------------
@@ -407,38 +572,64 @@ end
 -- ----------------------------------------------------------------------------
 function openCreateShop()
     if createWindow then createWindow:show(); createWindow:raise(); return end
-    -- Snapshot fresco a cada abertura: invalida o cache pro server gerar
-    -- novos uids virtuais consistentes com o estado atual do depot.
     inventoryList = {}
     createWindow = g_ui.displayUI('playershop.otui', rootWidget)
-    -- The OTUI imports several styles; pick the right one explicitly.
     createWindow = g_ui.createWidget('CreateShopWindow', rootWidget)
     createWindow:show()
     createWindow:raise()
     createWindow:focus()
 
     buildEmptySlots()
-    -- restore cached text (per session)
+
     if lastSavedText then
         createWindow:recursiveGetChildById('shopText'):setText(lastSavedText)
     end
-    -- NAO restauramos lastSavedSlots automaticamente: depois que uma loja
-    -- vende tudo (ou e cancelada), os items podem nao existir mais no depot.
-    -- Se restaurassemos, o user veria slots "fantasma" que sao rejeitados ao
-    -- iniciar a venda, parecendo "travado". Melhor comecar do zero.
 
-    createWindow:recursiveGetChildById('cancelBtn').onClick = function()
-        closeCreateShop()
-    end
-    createWindow:recursiveGetChildById('startBtn').onClick = function()
-        commitCreateShop()
+    -- If we still have slots cached from a previous attempt (e.g. the server
+    -- rejected it for "Invalid price item slot N" or the shop was closed
+    -- normally), mark the draft for restore. The actual re-fill happens
+    -- inside create_shop_inventory() once the inventory arrives.
+    pendingRestoreDraft = (lastSavedSlots ~= nil) and (next(lastSavedSlots) ~= nil) or false
+
+    -- Cancel / Start buttons.
+    createWindow:recursiveGetChildById('cancelBtn').onClick = closeCreateShop
+    createWindow:recursiveGetChildById('startBtn').onClick = commitCreateShop
+
+    -- Description clear (X next to the description input).
+    local descClearBtn = createWindow:recursiveGetChildById('descClearBtn')
+    if descClearBtn then
+        descClearBtn.onClick = function()
+            createWindow:recursiveGetChildById('shopText'):setText('')
+        end
     end
 
-    -- Bind Escape to close the window (scoped to the window so it doesn't
-    -- conflict with other ESC handlers).
+    -- Live-update price from the info panel into the selected slot.
+    local priceEdit = createWindow:recursiveGetChildById('slotPriceEdit')
+    if priceEdit then
+        priceEdit.onTextChange = function(self, text)
+            local s = selectedSlotIndex and slots[selectedSlotIndex] or nil
+            if not isFilled(s) then return end
+            local v = tonumber(text) or 0
+            if v < 1 or v > 1000000000 then
+                self:setColor('red')
+            else
+                self:setColor('white')
+            end
+            s.price = v
+            refreshSummary()
+        end
+    end
+
+    -- Remove button in the info panel.
+    local removeBtn = createWindow:recursiveGetChildById('slotRemoveBtn')
+    if removeBtn then
+        removeBtn.onClick = function()
+            if selectedSlotIndex then removeSlot(selectedSlotIndex) end
+        end
+    end
+
     g_keyboard.bindKeyPress('Escape', closeCreateShop, createWindow)
 
-    -- ask server for inventory snapshot to populate the picker later
     if modules.game_playershop and modules.game_playershop.sendOpcode then
         modules.game_playershop.sendOpcode(OPCODE_INVENTORY_LIST, '')
     end
@@ -447,9 +638,8 @@ end
 function closeCreateShop()
     if createWindow then createWindow:destroy(); createWindow = nil end
     if pickerWindow then pickerWindow:destroy(); pickerWindow = nil end
-    -- Limpa o cache pra que a proxima abertura puxe snapshot fresco com
-    -- novos uids virtuais alinhados com o depot atual.
     inventoryList = {}
+    selectedSlotIndex = nil
 end
 
 function commitCreateShop()
@@ -463,28 +653,29 @@ function commitCreateShop()
     end
     local payload = ''
     payload = payload .. modules.game_playershop.packStr(text)
-    -- count of filled slots
     local filled = {}
     for i = 1, MAX_SLOTS do
         local s = slots[i]
-        if s and s.entryId then filled[#filled + 1] = { idx = i, e = s } end
+        if isFilled(s) then filled[#filled + 1] = { idx = i, e = s } end
+    end
+    if #filled == 0 then
+        if modules.game_textmessage then
+            modules.game_textmessage.displayStatusMessage('Empty shop. Add at least one item.')
+        end
+        return
     end
     payload = payload .. string.char(#filled)
     for _, f in ipairs(filled) do
         local s = f.e
         payload = payload .. modules.game_playershop.packU32(s.entryUid or 0)
-        -- Send serverId (NOT clientId). Server's findItemInDepot does
-        -- it:getId() == itemId where it:getId() returns the OTB server id.
         payload = payload .. modules.game_playershop.packU16(s.serverId or 0)
         payload = payload .. modules.game_playershop.packU16(s.count or 1)
         payload = payload .. modules.game_playershop.packU32(s.price or 0)
     end
     modules.game_playershop.sendOpcode(OPCODE_SHOP_OPEN, payload)
-    -- Optimistic: lock immediately so user can't dash off mid-broadcast.
-    -- onReject (server denial) and STATE_BROADCAST(closed) both reset to false.
     iAmSelling = true
 
-    -- cache for next time
+    -- Cache for reopening the same draft later.
     lastSavedText = text
     lastSavedSlots = {}
     for _, f in ipairs(filled) do
@@ -513,17 +704,16 @@ function create_shop_inventory(buffer)
         charges,  pos = modules.game_playershop.readPosU16(buffer, pos)
         stack,    pos = modules.game_playershop.readPosU8(buffer, pos)
         name,     pos = modules.game_playershop.readPosStr(buffer, pos)
-        -- entry.id holds the CLIENT id so widget:setItemId() renders the sprite
-        -- correctly. entry.serverId is what we echo back on OPEN so the server
-        -- can findItemInDepot via Item:getId() (server-side OTB id).
         inventoryList[#inventoryList + 1] = {
             uid = uid, id = clientId, serverId = serverId,
             count = count, charges = charges,
             stackable = stack == 1, name = name
         }
     end
-    -- Real-time: chama populatePickerList direto. Se o gridPanel ja tem
-    -- geometry, renderiza na hora; senao, o onGeometryChange conectado
-    -- em openItemPicker vai disparar quando o panel ganhar dimensoes.
+    -- Restore draft slots if we just opened Create Shop and have a cached
+    -- previous attempt. Runs before populatePickerList so the picker (if
+    -- already open) reflects the items already consumed by the restored
+    -- slots when calculating what's still pickable.
+    restoreDraftSlots()
     if populatePickerList then populatePickerList() end
 end

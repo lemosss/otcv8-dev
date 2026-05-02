@@ -142,113 +142,74 @@ ShopBubble < UIWidget
   font: verdana-11px-rounded
   padding: 2 6 2 6
 
-ShopSlot < UIWidget
-  height: 36
-  image-source: /images/ui/item
-  image-border: 1
-  border-width: 1
-  border-color: #444444
-  border-radius: 4
-  margin-bottom: 4
+ShopSellerCell < UIWidget
+  size: 36 36
+  focusable: false
+
+  $hover:
+    background-color: #ffffff14
 
   Item
-    id: itemSlot
-    anchors.left: parent.left
-    anchors.verticalCenter: parent.verticalCenter
-    margin-left: 4
-    size: 32 32
+    id: cellItem
+    anchors.centerIn: parent
+    size: 34 34
     virtual: true
     show-count: true
+    phantom: true
 
-  Button
-    id: removeBtn
-    anchors.right: parent.right
-    anchors.verticalCenter: parent.verticalCenter
-    margin-right: 4
-    size: 22 22
-    text: x
-    color: red
+  UIWidget
+    id: cellPlus
+    anchors.centerIn: parent
+    size: 16 16
+    phantom: true
 
-  TextEdit
-    id: priceField
-    anchors.right: removeBtn.left
-    anchors.verticalCenter: parent.verticalCenter
-    margin-right: 6
-    width: 90
-    placeholder: gold
+    UIWidget
+      id: cellPlusH
+      anchors.centerIn: parent
+      size: 14 2
+      background-color: #b8b8b8
+      phantom: true
 
-  Label
-    id: itemName
-    anchors.left: itemSlot.right
-    anchors.right: priceField.left
-    anchors.verticalCenter: parent.verticalCenter
-    margin-left: 8
-    margin-right: 8
-    color: #dddddd
-    font: verdana-11px-monochrome
-    text-align: left
+    UIWidget
+      id: cellPlusV
+      anchors.centerIn: parent
+      size: 2 14
+      background-color: #b8b8b8
+      phantom: true
 
 CreateShopWindow < MainWindow
   id: createShopWindow
-  text: Criar Loja
-  size: 480 540
+  text: Create Shop
+  size: 460 470
   visible: false
-
-  Label
-    id: textLbl
-    anchors.left: parent.left
-    anchors.top: parent.top
-    margin-top: 4
-    text: Shop text:
 
   TextEdit
     id: shopText
-    anchors.left: textLbl.right
-    anchors.right: parent.right
-    anchors.verticalCenter: textLbl.verticalCenter
-    margin-left: 8
+    anchors.left: parent.horizontalCenter
+    anchors.right: descClearBtn.left
+    anchors.top: parent.top
+    margin-top: 2
+    margin-right: 4
     placeholder: e.g. "Selling cheap weapons!"
     max-length: 45
 
-  VerticalScrollBar
-    id: scrollBar
-    anchors.top: textLbl.bottom
-    anchors.bottom: summaryLbl.top
-    anchors.right: parent.right
-    margin-top: 10
-    margin-bottom: 6
-    width: 12
-    step: 36
-    pixels-scroll: true
-
-  ScrollablePanel
-    id: slotsPanel
-    anchors.left: parent.left
-    anchors.right: scrollBar.left
-    anchors.top: textLbl.bottom
-    anchors.bottom: summaryLbl.top
-    margin-top: 10
-    margin-bottom: 6
-    margin-right: 4
-    image-source: /images/ui/panel_flat
-    image-border: 1
-    padding: 4
-    layout:
-      type: verticalBox
-      spacing: 0
-    vertical-scrollbar: scrollBar
-
   Label
-    id: summaryLbl
-    anchors.left: parent.left
+    id: descLbl
+    anchors.right: shopText.left
+    anchors.verticalCenter: shopText.verticalCenter
+    margin-right: 6
+    text: Description:
+    color: #dddddd
+
+  Button
+    id: descClearBtn
     anchors.right: parent.right
-    anchors.bottom: startBtn.top
-    margin-bottom: 6
-    margin-left: 4
-    text-auto-resize: true
-    text-wrap: true
-    text: 0 items, total: 0 gold
-    color: #FFD700
+    anchors.top: parent.top
+    margin-top: 2
+    size: 22 22
+    text: x
+    color: #ff6666
+    font: verdana-11px-rounded
 
   Button
     id: startBtn
@@ -264,6 +225,147 @@ CreateShopWindow < MainWindow
     margin-right: 6
     width: 90
     text: Cancel
+
+  UIWidget
+    id: summaryBox
+    anchors.left: parent.left
+    anchors.verticalCenter: startBtn.verticalCenter
+    size: 200 20
+    image-source: /images/ui/panel_flat
+    image-border: 1
+
+    Label
+      id: summaryLbl
+      anchors.fill: parent
+      margin-left: 8
+      margin-right: 8
+      text: 0 items, total: 0 gold
+      color: #FFD700
+      font: verdana-11px-rounded
+      text-align: center
+
+  HorizontalSeparator
+    id: footerSep
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: startBtn.top
+    margin-bottom: 6
+
+  UIWidget
+    id: infoPanel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: footerSep.top
+    margin-bottom: 6
+    height: 110
+
+    Label
+      id: slotName
+      anchors.left: parent.left
+      anchors.top: parent.top
+      text: None selected
+      color: #ffffff
+      font: verdana-11px-monochrome
+
+    Label
+      id: slotPriceLbl
+      anchors.left: parent.left
+      anchors.top: slotName.bottom
+      margin-top: 14
+      text: Price (un):
+      color: #FFD700
+      font: verdana-11px-monochrome
+
+    TextEdit
+      id: slotPriceEdit
+      anchors.left: slotPriceLbl.right
+      anchors.verticalCenter: slotPriceLbl.verticalCenter
+      margin-left: 6
+      width: 100
+      placeholder: gold
+
+    Label
+      id: slotAmountLbl
+      anchors.left: parent.left
+      anchors.top: slotPriceEdit.bottom
+      margin-top: 8
+      text: Amount: -
+      color: #dddddd
+      font: verdana-11px-monochrome
+
+    Button
+      id: slotRemoveBtn
+      anchors.left: parent.left
+      anchors.top: slotAmountLbl.bottom
+      margin-top: 8
+      width: 80
+      text: Remove
+      enabled: false
+
+    UIWidget
+      id: previewSlot
+      anchors.left: slotPriceEdit.right
+      anchors.top: parent.top
+      margin-left: 16
+      margin-top: 8
+      size: 48 48
+
+      Item
+        id: previewItem
+        anchors.centerIn: parent
+        size: 44 44
+        virtual: true
+        show-count: true
+        phantom: true
+
+    UIWidget
+      id: descPanel
+      anchors.left: previewSlot.right
+      anchors.right: parent.right
+      anchors.top: parent.top
+      margin-left: 12
+      height: 90
+      image-source: /images/ui/panel_flat
+      image-border: 1
+
+      Label
+        id: descText
+        anchors.fill: parent
+        margin: 6
+        text: -
+        color: #ffffff
+        font: verdana-11px-monochrome
+        text-wrap: true
+        text-align: topLeft
+
+  VerticalScrollBar
+    id: scrollBar
+    anchors.top: shopText.bottom
+    anchors.bottom: infoPanel.top
+    anchors.right: parent.right
+    margin-top: 8
+    margin-bottom: 8
+    step: 38
+    pixels-scroll: true
+
+  ScrollablePanel
+    id: slotsPanel
+    anchors.left: parent.left
+    anchors.right: scrollBar.left
+    anchors.top: shopText.bottom
+    anchors.bottom: infoPanel.top
+    margin-top: 8
+    margin-bottom: 8
+    margin-right: 4
+    image-source: /images/ui/panel_flat
+    image-border: 1
+    padding: 4
+    layout:
+      type: grid
+      cell-size: 38 38
+      cell-spacing: 3
+      flow: true
+    vertical-scrollbar: scrollBar
 
 ShopBuyCell < UIWidget
   size: 36 36
@@ -382,7 +484,7 @@ ShopViewWindow < MainWindow
       id: priceLbl
       anchors.left: parent.left
       anchors.top: selName.bottom
-      margin-top: 4
+      margin-top: 14
       text: Price (un): -
       color: #FFD700
       font: verdana-11px-monochrome
@@ -391,14 +493,14 @@ ShopViewWindow < MainWindow
       id: amountScroll
       anchors.left: parent.left
       anchors.top: priceLbl.bottom
-      margin-top: 6
+      margin-top: 8
       width: 160
 
     Label
       id: amountLbl
       anchors.left: parent.left
       anchors.top: amountScroll.bottom
-      margin-top: 4
+      margin-top: 8
       text: Amount: 1x
       color: #dddddd
       font: verdana-11px-monochrome

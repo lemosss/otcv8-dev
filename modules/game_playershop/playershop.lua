@@ -282,6 +282,14 @@ local function onStateBroadcast(proto, opcode, buffer)
     local lp = g_game.getLocalPlayer()
     if lp and cid == lp:getId() then
         iAmSelling = (isOpen == 1)
+        -- Loja propria acabou de abrir com sucesso: descarta o draft
+        -- cacheado. Da proxima vez que o seller abrir Create Shop, comeca
+        -- do zero. (O cache so existe pra recuperar de um REJECT -- nao
+        -- pra "lembrar a loja anterior" entre sessoes legitimas.)
+        if isOpen == 1 then
+            lastSavedText  = nil
+            lastSavedSlots = nil
+        end
     end
 end
 
