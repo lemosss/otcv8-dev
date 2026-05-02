@@ -10,6 +10,15 @@ slots = {}              -- [slotIndex] = { entryUid, entryId, serverId, count, c
 
 local MAX_SLOTS = 20
 local selectedSlotIndex = nil
+
+-- History view state (lifetime sales log). Items mode is the default; the
+-- user toggles to History via the bottom-right button. The list and page
+-- counters are populated by the OPCODE_SHOP_HISTORY response handler.
+historyMode         = false
+historyCurrentPage  = 1
+historyTotalPages   = 1
+historyTotalEntries = 0
+local HISTORY_PAGE_SIZE = 20
 -- Set true by openCreateShop when there's a cached `lastSavedSlots` from a
 -- previous attempt (e.g. server rejected the OPEN with "Invalid price ..."):
 -- once the inventory list arrives we walk the cache and re-fill the grid so
@@ -24,9 +33,17 @@ local function isFilled(s)
     return s and s.entryId ~= nil
 end
 
+-- Format a number with `.` thousand separators (e.g. 12345 -> "12.345").
+local function fmtThousands(n)
+    local s = tostring(math.floor(tonumber(n) or 0))
+    local out = s:reverse():gsub('(%d%d%d)', '%1.'):reverse()
+    if out:sub(1, 1) == '.' then out = out:sub(2) end
+    return out
+end
+
 local function refreshSummary()
     if not createWindow then return end
-    local lbl = createWindow:recursiveGetChildById('summaryLbl')
+    local lbl = createWindow:recursiveGetChildById('goldLbl')
     if not lbl then return end
     local total, count = 0, 0
     for _, s in pairs(slots) do
@@ -35,7 +52,9 @@ local function refreshSummary()
             total = total + (s.price or 0) * (s.count or 1)
         end
     end
-    lbl:setText(('%d items, total: %d gold'):format(count, total))
+    -- Show just the total expected revenue (thousand-separated). Item
+    -- count is implicit from how many filled cells you can see.
+    lbl:setText(fmtThousands(total))
 end
 
 local function refreshInfoPanel()
@@ -568,6 +587,129 @@ function promptCountAndAssign(slotIndex, entry)
 end
 
 -- ----------------------------------------------------------------------------
+-- History mode: replaces the slot grid + info panel with a paginated table
+-- of the seller's lifetime sales (Date | Buyer | Description | Price).
+-- ----------------------------------------------------------------------------
+
+-- Widgets that belong exclusively to "items" mode (description input,
+-- slot grid, item info panel). Hidden when the seller toggles to History.
+local ITEMS_MODE_WIDGETS = {
+    'shopText', 'descLbl', 'descClearBtn',
+    'slotsPanel', 'scrollBar', 'infoPanel',
+}
+
+local function setVisibleAll(ids, visible)
+    if not createWindow then return end
+    for _, id in ipairs(ids) do
+        local w = createWindow:recursiveGetChildById(id)
+        if w then w:setVisible(visible) end
+    end
+end
+
+local function refreshHistoryFooter()
+    if not createWindow then return end
+    local entriesLbl = createWindow:recursiveGetChildById('histEntries')
+    local pageLbl    = createWindow:recursiveGetChildById('histPageLbl')
+    local firstBtn   = createWindow:recursiveGetChildById('histFirstBtn')
+    local prevBtn    = createWindow:recursiveGetChildById('histPrevBtn')
+    local nextBtn    = createWindow:recursiveGetChildById('histNextBtn')
+    local lastBtn    = createWindow:recursiveGetChildById('histLastBtn')
+    if entriesLbl then
+        entriesLbl:setText(('Entries: %d'):format(historyTotalEntries or 0))
+    end
+    if pageLbl then
+        pageLbl:setText(('%d/%d'):format(historyCurrentPage or 1,
+                                         math.max(1, historyTotalPages or 1)))
+    end
+    local atFirst = (historyCurrentPage or 1) <= 1
+    local atLast  = (historyCurrentPage or 1) >= (historyTotalPages or 1)
+    if firstBtn then firstBtn:setEnabled(not atFirst) end
+    if prevBtn  then prevBtn:setEnabled(not atFirst) end
+    if nextBtn  then nextBtn:setEnabled(not atLast) end
+    if lastBtn  then lastBtn:setEnabled(not atLast) end
+end
+
+-- Build a HistoryRow widget for one entry. Entry shape (from server):
+--   { ts:number, buyer:string, itemName:string, count:number,
+--     priceTotal:number }
+local function buildHistoryRow(entry)
+    local panel = createWindow:recursiveGetChildById('histListPanel')
+    if not panel then return end
+    local row = g_ui.createWidget('HistoryRow', panel)
+    -- Date: server sends a unix timestamp; format as DD/MM HH:MM (locale-
+    -- agnostic, fits 90px column without crowding). For older entries
+    -- the year wraps -- still readable enough for a sales log.
+    local dt = os.date('*t', entry.ts or 0)
+    local dateStr = ('%02d/%02d %02d:%02d'):format(dt.day, dt.month,
+                                                    dt.hour, dt.min)
+    row:getChildById('rowDate'):setText(dateStr)
+    row:getChildById('rowBuyer'):setText(entry.buyer or '?')
+    local desc
+    if (entry.count or 1) > 1 then
+        desc = ('%dx %s'):format(entry.count, entry.itemName or 'item')
+    else
+        desc = entry.itemName or 'item'
+    end
+    row:getChildById('rowDesc'):setText(desc)
+    row:getChildById('rowDesc'):setTooltip(desc)  -- in case it overflows
+    row:getChildById('rowPrice'):setText(fmtThousands(entry.priceTotal or 0))
+end
+
+function renderHistoryEntries(entries)
+    if not createWindow then return end
+    local panel = createWindow:recursiveGetChildById('histListPanel')
+    if panel then panel:destroyChildren() end
+    for _, e in ipairs(entries or {}) do
+        buildHistoryRow(e)
+    end
+    refreshHistoryFooter()
+end
+
+function requestHistoryPage(page)
+    if not createWindow then return end
+    page = math.max(1, math.min(page or 1, math.max(1, historyTotalPages or 1)))
+    historyCurrentPage = page
+    -- Show "loading" placeholder so the user gets immediate feedback.
+    local panel = createWindow:recursiveGetChildById('histListPanel')
+    if panel then panel:destroyChildren() end
+    refreshHistoryFooter()
+    -- Phase 3: actually fire the opcode. Until the server side is wired
+    -- up, the panel just stays empty with "Entries: 0" / "1/1" footer.
+    if modules.game_playershop and modules.game_playershop.OPCODE_SHOP_HISTORY_REQUEST
+        and modules.game_playershop.sendOpcode then
+        local payload = modules.game_playershop.packU16(page)
+            .. modules.game_playershop.packU16(HISTORY_PAGE_SIZE)
+        modules.game_playershop.sendOpcode(
+            modules.game_playershop.OPCODE_SHOP_HISTORY_REQUEST, payload)
+    end
+end
+
+function enterHistoryMode()
+    if not createWindow then return end
+    historyMode = true
+    setVisibleAll(ITEMS_MODE_WIDGETS, false)
+    local hp = createWindow:recursiveGetChildById('historyPanel')
+    if hp then hp:setVisible(true) end
+    local hb = createWindow:recursiveGetChildById('historyBtn')
+    local ib = createWindow:recursiveGetChildById('itemsBtn')
+    if hb then hb:setVisible(false) end
+    if ib then ib:setVisible(true) end
+    requestHistoryPage(1)
+end
+
+function enterItemsMode()
+    if not createWindow then return end
+    historyMode = false
+    setVisibleAll(ITEMS_MODE_WIDGETS, true)
+    local hp = createWindow:recursiveGetChildById('historyPanel')
+    if hp then hp:setVisible(false) end
+    local hb = createWindow:recursiveGetChildById('historyBtn')
+    local ib = createWindow:recursiveGetChildById('itemsBtn')
+    if hb then hb:setVisible(true) end
+    if ib then ib:setVisible(false) end
+end
+
+-- ----------------------------------------------------------------------------
 -- Open / close the create window
 -- ----------------------------------------------------------------------------
 function openCreateShop()
@@ -578,6 +720,12 @@ function openCreateShop()
     createWindow:show()
     createWindow:raise()
     createWindow:focus()
+
+    -- Reset to "items" mode regardless of how the previous session ended.
+    historyMode = false
+    historyCurrentPage  = 1
+    historyTotalPages   = 1
+    historyTotalEntries = 0
 
     buildEmptySlots()
 
@@ -591,9 +739,33 @@ function openCreateShop()
     -- inside create_shop_inventory() once the inventory arrives.
     pendingRestoreDraft = (lastSavedSlots ~= nil) and (next(lastSavedSlots) ~= nil) or false
 
-    -- Cancel / Start buttons.
-    createWindow:recursiveGetChildById('cancelBtn').onClick = closeCreateShop
+    -- Close / Start buttons.
+    createWindow:recursiveGetChildById('closeBtn').onClick = closeCreateShop
     createWindow:recursiveGetChildById('startBtn').onClick = commitCreateShop
+
+    -- Gold-coin icon in the bottom-left counter (matches buyer view).
+    -- 3031 is the client.dat id for gold coin (NOT the server id 2148).
+    local goldIcon = createWindow:recursiveGetChildById('goldIcon')
+    if goldIcon then goldIcon:setItemId(3031) end
+
+    -- History / Items toggle. History fetches and displays the seller's
+    -- lifetime sales log; Items returns to the slot grid (default view).
+    createWindow:recursiveGetChildById('historyBtn').onClick = enterHistoryMode
+    createWindow:recursiveGetChildById('itemsBtn').onClick = enterItemsMode
+
+    -- Pagination buttons (wired but server-side data is Phase 2).
+    createWindow:recursiveGetChildById('histFirstBtn').onClick = function()
+        requestHistoryPage(1)
+    end
+    createWindow:recursiveGetChildById('histPrevBtn').onClick = function()
+        requestHistoryPage((historyCurrentPage or 1) - 1)
+    end
+    createWindow:recursiveGetChildById('histNextBtn').onClick = function()
+        requestHistoryPage((historyCurrentPage or 1) + 1)
+    end
+    createWindow:recursiveGetChildById('histLastBtn').onClick = function()
+        requestHistoryPage(historyTotalPages or 1)
+    end
 
     -- Description clear (X next to the description input).
     local descClearBtn = createWindow:recursiveGetChildById('descClearBtn')

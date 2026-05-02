@@ -15,6 +15,8 @@ OPCODE_SHOP_STATE_BROADCAST   = 135
 OPCODE_VIP_SHOP_STATUS        = 136
 OPCODE_INVENTORY_LIST         = 137
 OPCODE_REJECT                 = 138
+OPCODE_SHOP_HISTORY_REQUEST   = 139  -- client -> server: u16 page, u16 pageSize
+OPCODE_SHOP_HISTORY           = 140  -- server -> client: full history page payload
 
 VIP_GOLD_COLOR = '#FFD700'
 SHOP_ICON_PATH = '/modules/game_playershop/icons/shop_icon'
@@ -311,6 +313,34 @@ local function onInventoryList(proto, opcode, buffer)
     if create_shop_inventory then create_shop_inventory(buffer) end
 end
 
+-- History page payload (server -> client):
+--   u16 currentPage, u16 totalPages, u32 totalEntries, u16 entryCount
+--   per entry: u32 ts, str buyer, str itemName, u16 count, u32 priceTotal
+local function onShopHistory(proto, opcode, buffer)
+    local pos = 1
+    local current; current, pos = readU16(buffer, pos)
+    local totalP;  totalP,  pos = readU16(buffer, pos)
+    local totalE;  totalE,  pos = readU32(buffer, pos)
+    local n;       n,       pos = readU16(buffer, pos)
+    local entries = {}
+    for i = 1, n do
+        local ts, buyer, itemName, count, priceTotal
+        ts,         pos = readU32(buffer, pos)
+        buyer,      pos = readStr(buffer, pos)
+        itemName,   pos = readStr(buffer, pos)
+        count,      pos = readU16(buffer, pos)
+        priceTotal, pos = readU32(buffer, pos)
+        entries[#entries + 1] = {
+            ts = ts, buyer = buyer, itemName = itemName,
+            count = count, priceTotal = priceTotal,
+        }
+    end
+    historyCurrentPage  = current
+    historyTotalPages   = totalP
+    historyTotalEntries = totalE
+    if renderHistoryEntries then renderHistoryEntries(entries) end
+end
+
 local function onReject(proto, opcode, buffer)
     local reason = buffer or ""
     -- Don't toggle iAmSelling here -- server sends STATE_BROADCAST right after
@@ -423,6 +453,7 @@ function init()
         ProtocolGame.registerExtendedOpcode(OPCODE_SHOP_DATA,            onShopData)
         ProtocolGame.registerExtendedOpcode(OPCODE_INVENTORY_LIST,       onInventoryList)
         ProtocolGame.registerExtendedOpcode(OPCODE_REJECT,               onReject)
+        ProtocolGame.registerExtendedOpcode(OPCODE_SHOP_HISTORY,         onShopHistory)
     end)
     -- Client-side instant auto-close: assim que o local player muda de
     -- posicao e a viewWindow esta aberta, recalcula a distancia pro
@@ -479,6 +510,7 @@ function terminate()
     ProtocolGame.unregisterExtendedOpcode(OPCODE_SHOP_DATA)
     ProtocolGame.unregisterExtendedOpcode(OPCODE_INVENTORY_LIST)
     ProtocolGame.unregisterExtendedOpcode(OPCODE_REJECT)
+    ProtocolGame.unregisterExtendedOpcode(OPCODE_SHOP_HISTORY)
 
     if modules.game_interface and modules.game_interface.removeMenuHook then
         modules.game_interface.removeMenuHook('playershop')

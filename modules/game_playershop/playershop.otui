@@ -213,43 +213,69 @@ CreateShopWindow < MainWindow
     font: verdana-11px-rounded
 
   Button
-    id: startBtn
+    id: closeBtn
     anchors.right: parent.right
     anchors.bottom: parent.bottom
-    width: 110
-    text: Start Shop
+    width: 70
+    text: Close
 
   Button
-    id: cancelBtn
-    anchors.right: startBtn.left
+    id: historyBtn
+    anchors.right: closeBtn.left
     anchors.bottom: parent.bottom
     margin-right: 6
-    width: 90
-    text: Cancel
+    width: 80
+    text: History
+
+  Button
+    id: itemsBtn
+    anchors.right: closeBtn.left
+    anchors.bottom: parent.bottom
+    margin-right: 6
+    width: 80
+    text: Items
+    visible: false
 
   UIWidget
-    id: summaryBox
+    id: goldBox
     anchors.left: parent.left
-    anchors.verticalCenter: startBtn.verticalCenter
-    size: 200 20
+    anchors.verticalCenter: closeBtn.verticalCenter
+    size: 100 20
     image-source: /images/ui/panel_flat
     image-border: 1
 
+    UIItem
+      id: goldIcon
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      margin-right: 2
+      size: 32 32
+      virtual: true
+      show-count: false
+      phantom: true
+      padding: 0
+
     Label
-      id: summaryLbl
-      anchors.fill: parent
-      margin-left: 8
-      margin-right: 8
-      text: 0 items, total: 0 gold
+      id: goldLbl
+      anchors.right: goldIcon.left
+      anchors.verticalCenter: parent.verticalCenter
+      text: 0
       color: #FFD700
       font: verdana-11px-rounded
-      text-align: center
+
+  Button
+    id: startBtn
+    anchors.left: goldBox.right
+    anchors.bottom: parent.bottom
+    margin-left: 6
+    width: 110
+    text: Start Shop
 
   HorizontalSeparator
     id: footerSep
     anchors.left: parent.left
     anchors.right: parent.right
-    anchors.bottom: startBtn.top
+    anchors.bottom: closeBtn.top
     margin-bottom: 6
 
   UIWidget
@@ -368,6 +394,205 @@ CreateShopWindow < MainWindow
       cell-spacing: 3
       flow: true
     vertical-scrollbar: scrollBar
+
+  UIWidget
+    id: historyPanel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: parent.top
+    anchors.bottom: footerSep.top
+    margin-top: 28
+    margin-bottom: 6
+    image-source: /images/ui/panel_flat
+    image-border: 1
+    visible: false
+
+    UIWidget
+      id: histHeader
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.top: parent.top
+      height: 22
+
+      Label
+        id: histColDate
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 8
+        width: 90
+        text: Date
+        color: #ffffff
+        font: verdana-11px-rounded
+
+      Label
+        id: histColBuyer
+        anchors.left: histColDate.right
+        anchors.verticalCenter: parent.verticalCenter
+        width: 110
+        text: Buyer
+        color: #ffffff
+        font: verdana-11px-rounded
+
+      Label
+        id: histColDesc
+        anchors.left: histColBuyer.right
+        anchors.right: histColPrice.left
+        anchors.verticalCenter: parent.verticalCenter
+        text: Description
+        color: #ffffff
+        font: verdana-11px-rounded
+
+      Label
+        id: histColPrice
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-right: 18
+        width: 70
+        text: Price
+        color: #ffffff
+        font: verdana-11px-rounded
+        text-align: right
+
+    HorizontalSeparator
+      id: histHeaderSep
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.top: histHeader.bottom
+
+    UIWidget
+      id: histFooter
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.bottom: parent.bottom
+      height: 24
+
+      Label
+        id: histEntries
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 8
+        text: Entries: 0
+        color: #cccccc
+        font: verdana-11px-rounded
+
+      UIWidget
+        id: histPager
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
+        size: 140 18
+
+        Button
+          id: histFirstBtn
+          anchors.left: parent.left
+          anchors.verticalCenter: parent.verticalCenter
+          size: 22 18
+          text: |<
+
+        Button
+          id: histPrevBtn
+          anchors.left: histFirstBtn.right
+          anchors.verticalCenter: parent.verticalCenter
+          margin-left: 2
+          size: 22 18
+          text: <
+
+        Label
+          id: histPageLbl
+          anchors.left: histPrevBtn.right
+          anchors.right: histNextBtn.left
+          anchors.verticalCenter: parent.verticalCenter
+          text: 1/1
+          color: #ffffff
+          font: verdana-11px-rounded
+          text-align: center
+
+        Button
+          id: histNextBtn
+          anchors.right: histLastBtn.left
+          anchors.verticalCenter: parent.verticalCenter
+          margin-right: 2
+          size: 22 18
+          text: >
+
+        Button
+          id: histLastBtn
+          anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          size: 22 18
+          text: >|
+
+    HorizontalSeparator
+      id: histFooterSep
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.bottom: histFooter.top
+
+    VerticalScrollBar
+      id: histScrollBar
+      anchors.top: histHeaderSep.bottom
+      anchors.bottom: histFooterSep.top
+      anchors.right: parent.right
+      margin-top: 4
+      margin-bottom: 4
+      margin-right: 3
+      step: 16
+      pixels-scroll: true
+
+    ScrollablePanel
+      id: histListPanel
+      anchors.left: parent.left
+      anchors.right: histScrollBar.left
+      anchors.top: histHeaderSep.bottom
+      anchors.bottom: histFooterSep.top
+      margin-top: 2
+      margin-bottom: 2
+      margin-left: 2
+      margin-right: 2
+      vertical-scrollbar: histScrollBar
+      layout:
+        type: verticalBox
+
+HistoryRow < UIWidget
+  height: 16
+  focusable: false
+
+  $hover:
+    background-color: #ffffff10
+
+  Label
+    id: rowDate
+    anchors.left: parent.left
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    width: 90
+    color: #cccccc
+    font: verdana-11px-rounded
+
+  Label
+    id: rowBuyer
+    anchors.left: rowDate.right
+    anchors.verticalCenter: parent.verticalCenter
+    width: 110
+    color: #ffffff
+    font: verdana-11px-rounded
+
+  Label
+    id: rowDesc
+    anchors.left: rowBuyer.right
+    anchors.right: rowPrice.left
+    anchors.verticalCenter: parent.verticalCenter
+    color: #dddddd
+    font: verdana-11px-rounded
+
+  Label
+    id: rowPrice
+    anchors.right: parent.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-right: 18
+    width: 70
+    color: #FFD700
+    font: verdana-11px-rounded
+    text-align: right
 
 ShopBuyCell < UIWidget
   size: 36 36
