@@ -347,12 +347,6 @@ local function destroyPickerWindow()
     pickerSearchText = ''
 end
 
-local function truncate(text, maxLen)
-    if not text then return '' end
-    if #text <= maxLen then return text end
-    return text:sub(1, maxLen - 1) .. '.'
-end
-
 function openItemPicker(slotIndex)
     destroyPickerWindow()
     pendingSlotIndex = slotIndex
@@ -495,12 +489,12 @@ function populatePickerList()
         local ok, err = pcall(function()
             local cell = g_ui.createWidget('PickerCell', panel)
             local cellItem = cell:getChildById('cellItem')
-            local cellName = cell:getChildById('cellName')
 
             cellItem:setItemId(e.id)
             cellItem:setItemCount(e.count)
-            cellName:setText(truncate(e.name or '', 8))
-            cell:setTooltip(('%dx %s\n(id %d)'):format(e.count, e.name or '', e.id))
+            -- Cell shows only the sprite + count badge; name is on tooltip.
+            -- Matches the Tibia container/depot slot aesthetic.
+            cell:setTooltip(('%dx %s'):format(e.count, e.name or '?'))
             cell.entry = e
 
             cell.onClick = function(self) highlightCell(self) end

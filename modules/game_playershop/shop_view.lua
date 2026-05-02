@@ -24,10 +24,6 @@ local function clearViewItems()
     selectedEntry = nil
 end
 
-local function fmtGold(n)
-    return tostring(n or 0) .. ' g'
-end
-
 -- Insert "." every 3 digits from the right: 379584769 -> 379.584.769.
 local function fmtThousands(n)
     local s = tostring(math.floor(tonumber(n) or 0))
@@ -126,7 +122,8 @@ local function buildBuyerCell(entry)
     local cellItem = cell:getChildById('cellItem')
     cellItem:setItemId(entry.itemId)
     cellItem:setItemCount(entry.count)
-    cell:setTooltip(('%dx %s\n%d g each'):format(entry.count, entry.name or '', entry.price or 0))
+    cell:setTooltip(('%dx %s\n%s g each'):format(
+        entry.count, entry.name or '', fmtThousands(entry.price or 0)))
     cell.entry = entry
 
     cell.onClick = function(self) selectCell(self) end
