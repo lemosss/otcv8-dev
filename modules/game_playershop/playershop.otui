@@ -556,9 +556,6 @@ HistoryRow < UIWidget
   height: 16
   focusable: false
 
-  $hover:
-    background-color: #ffffff10
-
   Label
     id: rowDate
     anchors.left: parent.left
