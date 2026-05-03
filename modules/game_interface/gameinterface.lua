@@ -317,11 +317,11 @@ function onUseWith(clickedWidget, mousePosition)
     if creature then
       -- Realera policy: runes cannot be used through the battle list. The
       -- player must click the target directly on the map (which routes
-      -- through UIGameMap above and is unaffected). 8.0 rune item ids run
-      -- 2260-2316; the few non-rune ids in that range are spell rune
-      -- placeholders and never reachable on a real player.
+      -- through UIGameMap above and is unaffected). 8.0 rune CLIENT ids
+      -- (Tibia.dat) run 3147-3203 contiguously — server ids 2260-2316
+      -- but Item:getId() returns the dat clientId, not the otb serverId.
       local id = selectedThing:getId()
-      if id >= 2260 and id <= 2316 then
+      if id >= 3147 and id <= 3203 then
         modules.game_textmessage.displayFailureMessage(
           tr('You cannot use runes through the battle list. Click the target on the map.'))
         -- Suppress the battle button's auto-attack handler that fires on

@@ -499,8 +499,9 @@ function doKeyCombo(keyCombo, repeated)
     -- Realera policy: runes cannot be auto-targeted on the attacking
     -- creature via hotkey. Same rationale as the battle-list block —
     -- the player must aim each rune manually by clicking the target on
-    -- the map. 8.0 rune ids are 2260-2316.
-    if hotKey.itemId >= 2260 and hotKey.itemId <= 2316 then
+    -- the map. 8.0 rune CLIENT ids (Tibia.dat) are 3147-3203
+    -- (server ids 2260-2316 mapped through items.otb).
+    if hotKey.itemId >= 3147 and hotKey.itemId <= 3203 then
       modules.game_textmessage.displayFailureMessage(
         tr('You cannot use runes on the attack target. Click the target on the map.'))
       return
