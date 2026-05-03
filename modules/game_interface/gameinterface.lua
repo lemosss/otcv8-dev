@@ -315,6 +315,17 @@ function onUseWith(clickedWidget, mousePosition)
   elseif clickedWidget:getClassName() == 'UICreatureButton' then
     local creature = clickedWidget:getCreature()
     if creature then
+      -- Realera policy: runes cannot be used through the battle list. The
+      -- player must click the target directly on the map (which routes
+      -- through UIGameMap above and is unaffected). 8.0 rune item ids run
+      -- 2260-2316; the few non-rune ids in that range are spell rune
+      -- placeholders and never reachable on a real player.
+      local id = selectedThing:getId()
+      if id >= 2260 and id <= 2316 then
+        modules.game_textmessage.displayFailureMessage(
+          tr('You cannot use runes through the battle list. Click the target on the map.'))
+        return
+      end
       g_game.useWith(selectedThing, creature, selectedSubtype)
     end
   end
