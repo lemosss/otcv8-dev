@@ -324,6 +324,11 @@ function onUseWith(clickedWidget, mousePosition)
       if id >= 2260 and id <= 2316 then
         modules.game_textmessage.displayFailureMessage(
           tr('You cannot use runes through the battle list. Click the target on the map.'))
+        -- Suppress the battle button's auto-attack handler that fires on
+        -- the same mouse release.
+        if modules.game_battle and modules.game_battle.mouseWidget then
+          modules.game_battle.mouseWidget.cancelNextRelease = true
+        end
         return
       end
       g_game.useWith(selectedThing, creature, selectedSubtype)
