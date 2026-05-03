@@ -496,6 +496,16 @@ function doKeyCombo(keyCombo, repeated)
       return
     end
 
+    -- Realera policy: runes cannot be auto-targeted on the attacking
+    -- creature via hotkey. Same rationale as the battle-list block —
+    -- the player must aim each rune manually by clicking the target on
+    -- the map. 8.0 rune ids are 2260-2316.
+    if hotKey.itemId >= 2260 and hotKey.itemId <= 2316 then
+      modules.game_textmessage.displayFailureMessage(
+        tr('You cannot use runes on the attack target. Click the target on the map.'))
+      return
+    end
+
     if not attackingCreature:getTile() then return end
     if g_game.getClientVersion() < 780 then
       local item = g_game.findPlayerItem(hotKey.itemId, hotKey.subType or -1)
