@@ -626,10 +626,17 @@ end
 -- Build a HistoryRow widget for one entry. Entry shape (from server):
 --   { ts:number, buyer:string, itemName:string, count:number,
 --     priceTotal:number }
-local function buildHistoryRow(entry)
+-- The 0-indexed `rowIndex` passed in drives zebra striping so adjacent
+-- transactions are easier to scan.
+local function buildHistoryRow(entry, rowIndex)
     local panel = createWindow:recursiveGetChildById('histListPanel')
     if not panel then return end
     local row = g_ui.createWidget('HistoryRow', panel)
+    if (rowIndex or 0) % 2 == 0 then
+        row:setBackgroundColor('#0000001a')
+    else
+        row:setBackgroundColor('#00000033')
+    end
     -- Date: server sends a unix timestamp; format as DD/MM HH:MM (locale-
     -- agnostic, fits 90px column without crowding). For older entries
     -- the year wraps -- still readable enough for a sales log.
@@ -653,8 +660,8 @@ function renderHistoryEntries(entries)
     if not createWindow then return end
     local panel = createWindow:recursiveGetChildById('histListPanel')
     if panel then panel:destroyChildren() end
-    for _, e in ipairs(entries or {}) do
-        buildHistoryRow(e)
+    for i, e in ipairs(entries or {}) do
+        buildHistoryRow(e, i - 1)
     end
     refreshHistoryFooter()
 end

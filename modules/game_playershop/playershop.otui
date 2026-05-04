@@ -444,7 +444,7 @@ CreateShopWindow < MainWindow
         text: Price
         color: #ffffff
         font: verdana-11px-rounded
-        text-align: right
+        text-align: left
 
     HorizontalSeparator
       id: histHeaderSep
