@@ -188,7 +188,10 @@ end
 -- case a server later sends its own list.
 -- Default outfit colors used as a neutral preview palette so the category
 -- and card creatures don't render as the bald-mannequin default.
-local DEFAULT_OUTFIT_COLORS = {head = 78, body = 88, legs = 113, feet = 95, addons = 0}
+-- addons = 3 (bitmask 1|2) so the preview shows the outfit with BOTH
+-- addon 1 and addon 2 attached — what the player actually gets when
+-- they buy the offer (server-side script grants addons=3 too).
+local DEFAULT_OUTFIT_COLORS = {head = 78, body = 88, legs = 113, feet = 95, addons = 3}
 
 local function outfitOffer(id, lookType, name)
   local outfit = {type = lookType}
@@ -213,26 +216,31 @@ local LOCAL_CATEGORIES = {
     },
   },
   {
-    -- Knight as the category icon (most iconic 8.0 outfit). Card-side
-    -- creatures pick up their own look type from each offer.
+    -- Only the looks that are NOT given automatically with premium go
+    -- here. Free outfits (Citizen / Hunter / Mage / Knight / Druid)
+    -- come with the character; premium-tier outfits (Nobleman /
+    -- Summoner / Warrior / Barbarian / Wizard / Oriental) are granted
+    -- when the account turns premium. The shop only sells the addon
+    -- looks the server flags as unlocked="no" in data/XML/outfits.xml,
+    -- which means the purchase script must call
+    --   player:addOutfit(lookType, 3)
+    -- so the player gets the base outfit + addon 1 + addon 2 in one go.
+    -- lookTypes are the male sprites; the server-side handler should
+    -- pick the female lookType (155/156/157/158/252) when the buyer is
+    -- female. Pirate is also used as the category icon.
     type = "outfit",
     outfit = (function()
-      local o = {type = 131}
+      local o = {type = 151}
       for k, v in pairs(DEFAULT_OUTFIT_COLORS) do o[k] = v end
       return o
     end)(),
     name = "Outfits",
     offers = {
-      outfitOffer("outfit_citizen",  128, "Citizen"),
-      outfitOffer("outfit_hunter",   129, "Hunter"),
-      outfitOffer("outfit_mage",     130, "Mage"),
-      outfitOffer("outfit_knight",   131, "Knight"),
-      outfitOffer("outfit_nobleman", 132, "Nobleman"),
-      outfitOffer("outfit_summoner", 133, "Summoner"),
-      outfitOffer("outfit_warrior",  134, "Warrior"),
-      outfitOffer("outfit_druid",    143, "Druid"),
-      outfitOffer("outfit_wizard",   145, "Wizard"),
-      outfitOffer("outfit_oriental", 146, "Oriental"),
+      outfitOffer("outfit_pirate",   151, "Pirate"),
+      outfitOffer("outfit_assassin", 152, "Assassin"),
+      outfitOffer("outfit_beggar",   153, "Beggar"),
+      outfitOffer("outfit_shaman",   154, "Shaman"),
+      outfitOffer("outfit_norseman", 251, "Norseman"),
     },
   },
 }
