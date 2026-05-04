@@ -1,259 +1,703 @@
-ShopCategory < Panel
-  height: 36
-  focusable: true
-  background: alpha
+// ----------------------------------------------------------------------------
+// Cipsoft-Tibia-Store-style Shop UI for Realera.
+// Three-column layout: categories sidebar (left) | offer cards grid (center)
+// | selected-offer detail panel (right). Bottom bar with Points / Get /
+// History / Close. The structure mirrors the layout in the spec screenshot.
+//
+// shop.lua references the IDs declared here. Critical IDs:
+//   categories          - left sidebar TextList
+//   offers              - middle TextList of offer cards
+//   detailName/Icon/    - right column detail widgets
+//     Buy/Price/Desc
+//   pointsText          - bottom-bar "Points: N" label
+//   getCoins / history  - bottom-bar buttons
+//   buttonCancel        - Close button
+//   adPanel / infoPanel - kept hidden but present so legacy callbacks
+//                          (onCoinBalance, processStatus, processAd) don't
+//                          NPE on the otcv8shop server path.
+// ----------------------------------------------------------------------------
 
+// Sidebar category row. Discrete button per category, slim and 3D, matching
+// the spec screenshot. Uses the standard UI button slice with normal/hover/
+// pressed clips so the focused category visibly "presses in". Only
+// margin-bottom so the lateral inset comes purely from the parent
+// TextList's padding (matches the cards in the offers list).
+ShopCategory < Panel
+  height: 26
+  focusable: true
+  margin-bottom: 2
+  image-source: /images/ui/button
+  image-color: #dfdfdf
+  image-clip: 0 0 22 23
+  image-border: 3
+  padding: 0 6 0 6
+  cursor: pointer
+
+  $!focus $hover:
+    image-clip: 0 23 22 23
+
+  // Same brighter tint as the offer cards so a focused category and a
+  // focused offer share the same "selected" feel.
   $focus:
-    background: #99999999
-  
+    image-clip: 0 46 22 23
+    image-color: #ffffff
+
   Label
     id: name
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.bottom: parent.bottom
-    margin-left: 40
+    margin-left: 32
     text-align: left
-    color: white
-    font: verdana-11px-rounded    
-    
+    color: #dfdfdf
+    font: verdana-11px-rounded
+
 ShopCategoryItem < ShopCategory
   UIItem
     id: item
     anchors.verticalCenter: parent.verticalCenter
     anchors.left: parent.left
-    margin-left: 4
-    size: 32 32
+    margin-left: 6
+    size: 18 18
     virtual: true
     show-count: false
-    
+
 ShopCategoryCreature < ShopCategory
   UICreature
     id: creature
-    anchors.top: parent.top
+    anchors.verticalCenter: parent.verticalCenter
     anchors.left: parent.left
-    anchors.bottom: parent.bottom
-    margin-top: 2
-    margin-bottom: 2
-    margin-left: 2
-    size: 32 32
-    
+    margin-left: 6
+    size: 22 22
+
 ShopCategoryImage < ShopCategory
   Label
     id: image
-    anchors.top: parent.top
+    anchors.verticalCenter: parent.verticalCenter
     anchors.left: parent.left
-    anchors.bottom: parent.bottom
-    margin-top: 2
-    margin-bottom: 2
-    margin-left: 2
-    size: 32 32    
-    
-    
-    
+    margin-left: 6
+    size: 18 18
+
+// Middle column offer card. Icon (left), name (top-right), price + coin icon
+// in a small framed pill at bottom-right.
+// Cards use the standard button slice for the raised 3D look (matches the
+// spec photo where each card looks like a slightly-pressed button). Focused
+// card swaps to the pressed clip so the selection is unmistakable.
 ShopOffer < Panel
-  height: 56
-  background: alpha
-  
+  height: 70
+  margin-bottom: 4
+  focusable: true
+  image-source: /images/ui/button
+  image-color: #dfdfdf
+  image-clip: 0 0 22 23
+  image-border: 3
+  cursor: pointer
+
+  $!focus $hover:
+    image-clip: 0 23 22 23
+
   $focus:
-    background: #99999999
+    image-clip: 0 46 22 23
+    image-color: #ffffff
 
   Label
     id: title
+    anchors.top: parent.top
     anchors.left: parent.left
     anchors.right: parent.right
-    anchors.top: parent.top
-    margin-top: 4
-    margin-left: 55
+    margin-top: 8
+    margin-left: 75
+    margin-right: 8
     text-align: topleft
     color: white
     font: verdana-11px-rounded
+    text-wrap: true
 
+  // Hidden description label (kept so legacy addOffer setText doesn't error;
+  // the visible description lives on the right detail panel).
   Label
     id: description
-    anchors.top: prev.bottom
-    anchors.left: parent.left
-    anchors.right: parent.right
+    visible: false
+    width: 0
+    height: 0
+
+  UIWidget
+    id: priceFrame
     anchors.bottom: parent.bottom
-    margin-left: 55
-    margin-right: 55
-    text-align: topleft
-    text-auto-resize: true
-    text-wrap: true
-    color: white
-    font: verdana-11px-rounded
-    
-  Button
+    anchors.right: parent.right
+    margin-bottom: 8
+    margin-right: 8
+    size: 100 22
+    image-source: /images/ui/panel_flat
+    image-border: 1
+
+    UIWidget
+      id: priceIcon
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      margin-right: 6
+      size: 14 14
+      image-source: /images/game/slots/coins
+
+    Label
+      id: price
+      anchors.left: parent.left
+      anchors.right: priceIcon.left
+      anchors.verticalCenter: parent.verticalCenter
+      margin-left: 6
+      margin-right: 4
+      text-align: right
+      text: 0
+      color: white
+      font: verdana-11px-rounded
+
+  // Hidden buyButton (legacy; clicking the card whole now drives the detail
+  // panel and the user buys via that side's "Buy Now!" button).
+  UIButton
     id: buyButton
-    text: BUY
-    height: 25
-    anchors.verticalCenter: parent.verticalCenter
-    anchors.left: prev.right
-    anchors.right: parent.right    
-    margin-right: 15
-    text-align: center
-    
+    visible: false
+    width: 0
+    height: 0
+
 ShopOfferItem < ShopOffer
   UIItem
     id: item
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.bottom: parent.bottom
-    margin-top: 4
-    margin-bottom: 4
-    margin-left: 2
+    margin: 6
+    size: 60 60
     virtual: true
-    size: 48 48
-    
+    show-count: false
+
 ShopOfferCreature < ShopOffer
   UICreature
     id: creature
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.bottom: parent.bottom
-    margin-top: 4
-    margin-bottom: 4
-    margin-left: 2
-    size: 48 48
-    
+    margin: 6
+    size: 60 60
+
 ShopOfferImage < ShopOffer
   Label
     id: image
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.bottom: parent.bottom
-    margin-top: 4
-    margin-bottom: 4
-    margin-left: 2
-    size: 48 48    
-  
+    margin: 6
+    size: 60 60
+
+// Shop history row.
+//
+// IMPORTANT: this template MUST NOT be named `HistoryRow`. The playershop
+// module (modules/game_playershop/playershop.otui:569) also defines a
+// `HistoryRow < UIWidget` template, with children rowDate / rowBuyer /
+// rowDesc / rowPrice. OTC's style registry is global keyed by name, so
+// whichever module loads later silently overrides the other. When the
+// playershop wins, `g_ui.createWidget('HistoryRow', ...)` in shop.lua
+// gets the playershop's template — rowDate and rowDesc still exist (so
+// they populate), but rowBalance is missing → setText on it errors with
+// "attempt to index field 'rowBalance' (a nil value)". Renaming to
+// `ShopHistoryRow` removes the collision.
+//
+// text-auto-resize: false on every label is also required, otherwise
+// UIWidget::updateText (uiwidgettext.cpp:46-54) resizes the widget to
+// text size, ignoring the declared `width` and breaking column alignment.
+ShopHistoryRow < UIWidget
+  height: 16
+  focusable: false
+
+  Label
+    id: rowDate
+    anchors.left: parent.left
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    width: 140
+    color: #cccccc
+    font: verdana-11px-rounded
+    text-auto-resize: false
+    text-align: left
+
+  Label
+    id: rowBalance
+    anchors.left: rowDate.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 8
+    width: 50
+    color: #d05050
+    font: verdana-11px-rounded
+    text-auto-resize: false
+    text-align: left
+
+  UIWidget
+    id: rowBalanceIcon
+    anchors.left: rowBalance.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 4
+    size: 14 14
+    image-source: /images/game/slots/coins
+
+  Label
+    id: rowDesc
+    anchors.left: rowBalanceIcon.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 12
+    width: 260
+    color: #dddddd
+    font: verdana-11px-rounded
+    text-auto-resize: false
+    text-align: left
+
+// ----------------------------------------------------------------------------
 MainWindow
   id: shopWindow
   !text: tr('Shop')
-  size: 750 500
+  size: 800 560
   @onEscape: modules.game_shop.hide()
   $mobile:
-    size: 500 360
+    size: 700 480
 
+  // Outer molding wrapping the 3 columns. Thin black border (1px) instead
+  // of a panel_flat texture so it doesn't conflict with the inner columns'
+  // own panel_flat backdrops. The visual effect is the inner columns sit
+  // inside a subtle "tray". Phantom so it doesn't intercept clicks.
   Panel
-    id: infoPanel
+    id: outerFrame
     anchors.top: parent.top
     anchors.left: parent.left
-    width: 230
-    height: 60
-
-    Label
-      id: points
-      anchors.horizontalCenter: parent.horizontalCenter
-      anchors.top: parent.top
-      margin-top: 10
-      text: -
-      text-auto-resize: true
-    
-    Button
-      id: buy
-      anchors.horizontalCenter: parent.horizontalCenter
-      width: 150
-      anchors.top: prev.bottom
-      margin-top: 10
-      visible: false
-      !text: tr("Buy points")
-
-  Panel
-    id: adPanel
-    anchors.top: parent.top
-    anchors.left: infoPanel.right
     anchors.right: parent.right
-    margin-left: 10
-    height: 0
-    
-    Label
-      id: ad
-      anchors.horizontalCenter: parent.horizontalCenter
-      anchors.top: parent.top
-      anchors.bottom: parent.bottom
-      text-auto-resize: true
-      text-wrap: true
-      text-align: center
-      font: sans-bold-16px
-  
-  TextList    
+    anchors.bottom: separator.top
+    margin-bottom: 4
+    border-width: 1
+    border-color: #000000
+    phantom: true
+    focusable: false
+
+  // Left sidebar. The default TextList style has its own border-width and
+  // background-color that compete with our panel_flat texture (the right
+  // column uses Panel which has neither, so it looks "cleaner"). Zero
+  // them out so the three columns render with identical framing.
+  TextList
     id: categories
     vertical-scrollbar: categoriesScrollBar
-    anchors.top: infoPanel.bottom
-    anchors.left: infoPanel.left
-    anchors.right: infoPanel.right
-    anchors.bottom: transactionHistory.top
-    margin-top: 10
-    margin-bottom: 10
-    padding: 1
+    anchors.top: outerFrame.top
+    anchors.left: outerFrame.left
+    anchors.bottom: outerFrame.bottom
+    width: 200
+    margin: 4
+    padding: 4 18 4 4
     focusable: false
+    border-width: 0
+    background-color: alpha
+    image-source: /images/ui/panel_flat
+    image-border: 1
 
   VerticalScrollBar
     id: categoriesScrollBar
     anchors.top: categories.top
     anchors.bottom: categories.bottom
     anchors.right: categories.right
+    margin-top: 2
+    margin-bottom: 2
+    margin-right: 2
     step: 50
     pixels-scroll: true
 
+  // Center: offers grid (cards). Right padding leaves room for the scrollbar
+  // so cards never sit underneath it. Same border-width: 0 + transparent bg
+  // override as the sidebar so the panel_flat texture matches the right
+  // column's framing exactly.
   TextList
     id: offers
     vertical-scrollbar: offersScrollBar
-    anchors.top: adPanel.bottom
-    anchors.left: adPanel.left
-    anchors.right: adPanel.right
-    anchors.bottom: transactionHistory.top
-    margin-top: 10
-    margin-bottom: 10
-    padding: 1
+    anchors.top: outerFrame.top
+    anchors.left: categories.right
+    anchors.right: detailPanel.left
+    anchors.bottom: outerFrame.bottom
+    margin-top: 4
+    margin-left: 4
+    margin-right: 4
+    margin-bottom: 4
+    padding: 4 18 4 4
     focusable: false
+    border-width: 0
+    background-color: alpha
+    image-source: /images/ui/panel_flat
+    image-border: 1
 
   VerticalScrollBar
     id: offersScrollBar
     anchors.top: offers.top
     anchors.bottom: offers.bottom
     anchors.right: offers.right
-    step: 50
+    margin-top: 2
+    margin-bottom: 2
+    margin-right: 2
+    step: 70
     pixels-scroll: true
 
-  Button
-    id: transactionHistory
-    !text: tr('Transaction history')
-    width: 128
+  // Right: selected-offer detail panel — sits inside the outer frame.
+  Panel
+    id: detailPanel
+    anchors.top: outerFrame.top
+    anchors.right: outerFrame.right
+    anchors.bottom: outerFrame.bottom
+    width: 290
+    margin: 4
+    image-source: /images/ui/panel_flat
+    image-border: 1
+
+    Label
+      id: detailName
+      anchors.top: parent.top
+      anchors.left: parent.left
+      anchors.right: parent.right
+      margin-top: 8
+      margin-left: 8
+      margin-right: 8
+      text-align: center
+      color: white
+      font: verdana-11px-rounded
+      text-auto-resize: true
+      text-wrap: true
+
+    // Square icon frame on the left of the detail panel. Matches the
+    // photo where the item visual fills the box.
+    UIWidget
+      id: detailIconFrame
+      anchors.top: detailName.bottom
+      anchors.left: parent.left
+      margin-top: 10
+      margin-left: 8
+      size: 140 140
+      image-source: /images/ui/panel_flat
+      image-border: 1
+
+      UIItem
+        id: detailIcon
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
+        size: 100 100
+        virtual: true
+        show-count: false
+
+      UICreature
+        id: detailCreature
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
+        size: 100 100
+        visible: false
+
+      UIWidget
+        id: detailImage
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
+        size: 100 100
+        visible: false
+
+    // Right-side stack of CTA: Buy Now! (blue) on top, price pill below.
+    Button
+      id: detailBuyButton
+      anchors.top: detailName.bottom
+      anchors.left: detailIconFrame.right
+      anchors.right: parent.right
+      margin-top: 10
+      margin-left: 8
+      margin-right: 8
+      height: 22
+      !text: tr('Buy Now!')
+      enabled: false
+      color: white
+      font: verdana-11px-rounded
+      image-color: #4a78c8
+      @onClick: modules.game_shop.buySelected()
+
+      $hover !disabled:
+        image-color: #5d8cda
+
+      $pressed:
+        image-color: #3a68b8
+
+      $disabled:
+        image-color: #4a4a4a
+
+    UIWidget
+      id: detailPriceFrame
+      anchors.top: detailBuyButton.bottom
+      anchors.left: detailBuyButton.left
+      anchors.right: detailBuyButton.right
+      margin-top: 4
+      height: 22
+      image-source: /images/ui/panel_flat
+      image-border: 1
+
+      Label
+        id: detailPrice
+        anchors.left: parent.left
+        anchors.right: priceCoinIcon.left
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 8
+        margin-right: 4
+        text-align: right
+        color: white
+        font: verdana-11px-rounded
+
+      UIWidget
+        id: priceCoinIcon
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-right: 6
+        size: 14 14
+        image-source: /images/game/slots/coins
+
+    // Description container — separate panel_flat box below the icon /
+    // buy block, matching the spec photo where the description sits in
+    // its own subtly-tinted frame (visually distinct from the surrounding
+    // panel).
+    Panel
+      id: detailDescriptionFrame
+      anchors.top: detailIconFrame.bottom
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.bottom: parent.bottom
+      margin-top: 12
+      margin-left: 8
+      margin-right: 8
+      margin-bottom: 8
+      image-source: /images/ui/panel_flat
+      image-border: 1
+
+      Label
+        id: detailDescription
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        margin-top: 8
+        margin-left: 8
+        margin-right: 8
+        text-wrap: true
+        text-align: topleft
+        color: white
+        font: verdana-11px-rounded
+
+  // History view — single panel containing header, scrollable rows, and
+  // full-height column separators. Replicates the playershop's history
+  // table structure 1:1. Hidden by default; shop.lua toggles it visible
+  // (and hides offers/detailPanel) when entering history mode.
+  UIWidget
+    id: historyPanel
+    anchors.top: outerFrame.top
+    anchors.left: categories.right
+    anchors.right: outerFrame.right
+    anchors.bottom: outerFrame.bottom
+    margin: 4
+    image-source: /images/ui/panel_flat
+    image-border: 1
+    visible: false
+
+    // Column header row.
+    UIWidget
+      id: histHeader
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.top: parent.top
+      height: 22
+
+      Label
+        id: histColDate
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 6
+        width: 140
+        text: Date
+        color: #ffffff
+        font: verdana-11px-rounded
+
+      Label
+        id: histColBalance
+        anchors.left: histColDate.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 8
+        width: 70
+        text: Balance
+        color: #ffffff
+        font: verdana-11px-rounded
+
+      Label
+        id: histColDesc
+        anchors.left: histColBalance.right
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 12
+        margin-right: 8
+        text: Description
+        color: #ffffff
+        font: verdana-11px-rounded
+
+    HorizontalSeparator
+      id: histHeaderSep
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.top: histHeader.bottom
+
+    // Full-height column separators — anchored to the panel itself, not
+    // to individual rows, so they span from the header all the way to
+    // the bottom regardless of how many rows are populated. Same trick
+    // the playershop uses.
+    VerticalSeparator
+      id: histColSep1
+      anchors.top: histHeader.top
+      anchors.bottom: parent.bottom
+      anchors.left: parent.left
+      margin-left: 148
+
+    VerticalSeparator
+      id: histColSep2
+      anchors.top: histHeader.top
+      anchors.bottom: parent.bottom
+      anchors.left: parent.left
+      margin-left: 228
+
+    VerticalScrollBar
+      id: histScrollBar
+      anchors.top: histHeaderSep.bottom
+      anchors.bottom: parent.bottom
+      anchors.right: parent.right
+      margin-top: 4
+      margin-bottom: 4
+      margin-right: 3
+      step: 16
+      pixels-scroll: true
+
+    ScrollablePanel
+      id: histListPanel
+      anchors.left: parent.left
+      anchors.right: histScrollBar.left
+      anchors.top: histHeaderSep.bottom
+      anchors.bottom: parent.bottom
+      margin-top: 2
+      margin-bottom: 2
+      margin-left: 2
+      margin-right: 2
+      vertical-scrollbar: histScrollBar
+      layout:
+        type: verticalBox
+
+  // Horizontal separator above the bottom bar (matches the screenshot's
+  // subtle inset line dividing the content area from the controls strip).
+  HorizontalSeparator
+    id: separator
     anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: bottomBar.top
+    margin-bottom: 6
+
+  // ---------------- Bottom bar ----------------
+  Panel
+    id: bottomBar
+    anchors.left: parent.left
+    anchors.right: parent.right
     anchors.bottom: parent.bottom
-    @onClick: modules.game_shop.showHistory()
+    height: 30
+
+    // Points display: pressed-button slice gives a recessed/inset 3D look
+    // (lighter top-left edge, darker bottom-right) — reads as a status
+    // display window rather than a flat label.
+    UIWidget
+      id: pointsBg
+      anchors.left: parent.left
+      anchors.verticalCenter: parent.verticalCenter
+      margin-left: 0
+      size: 130 22
+      image-source: /images/ui/button
+      image-clip: 0 46 22 23
+      image-border: 3
+      image-color: #909090
+
+      Label
+        id: pointsText
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-left: 10
+        margin-right: 10
+        text-align: left
+        text: Points: 0
+        color: #ffffff
+        font: verdana-11px-rounded
+
+    Button
+      id: getCoins
+      anchors.left: prev.right
+      anchors.verticalCenter: parent.verticalCenter
+      margin-left: 8
+      width: 70
+      height: 22
+      !text: tr('Get')
+      text-offset: -10 1
+      image-color: #4ea84e
+      color: white
+      @onClick: modules.game_shop.openGetCoins()
+
+      // Same coin sprite used in the offer-card price pills.
+      UIWidget
+        id: getCoinsIcon
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        margin-right: 4
+        size: 14 14
+        image-source: /images/game/slots/coins
+
+    // History (right group)
+    Button
+      id: transactionHistory
+      anchors.right: buttonCancel.left
+      anchors.verticalCenter: parent.verticalCenter
+      margin-right: 6
+      width: 80
+      height: 22
+      !text: tr('History')
+      @onClick: modules.game_shop.toggleHistory()
+
+    Button
+      id: buttonCancel
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      width: 64
+      height: 22
+      !text: tr('Close')
+      @onClick: modules.game_shop.hide()
+
+  // ---------------- Hidden legacy panels ----------------
+  // shop.lua's onCoinBalance / processStatus / processAd code paths still
+  // reference these by id. Hide them so they don't show but keep them
+  // live so legacy callbacks don't NPE on the otcv8shop server.
+  Panel
+    id: infoPanel
+    visible: false
+    height: 0
+    width: 0
+
+    Label
+      id: points
+
+    Button
+      id: buy
+
+  Panel
+    id: adPanel
+    visible: false
+    height: 0
+    width: 0
+
+    Label
+      id: ad
 
   Button
     id: transferOpen
-    !text: tr('Transfer Coins')
-    width: 128
-    anchors.left: prev. right
-    margin-left: 10
-    anchors.verticalCenter: prev.verticalCenter
+    visible: false
+    height: 0
+    width: 0
     @onClick: modules.game_shop.showTransfer()
-
-  Button
-    id: getCoins
-    !text: tr('Get')
-    width: 90
-    anchors.left: prev.right
-    margin-left: 10
-    anchors.verticalCenter: prev.verticalCenter
-    image-color: #4ea84e
-    color: #ffffff
-    icon-source: /images/game/slots/coins
-    icon-clip: 0 0 16 16
-    icon-align: right
-    icon-offset: -8 0
-    text-offset: -10 1
-    @onClick: modules.game_shop.openGetCoins()
-
-  Button
-    id: buttonCancel
-    !text: tr('Close')
-    width: 64
-    anchors.right: parent.right
-    anchors.bottom: parent.bottom
-    @onClick: modules.game_shop.hide()
